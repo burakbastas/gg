@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#121317">
+<meta name="color-scheme" content="light dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Gitar">
+<meta name="description" content="Sap ezberi, armoni, makam, kulak, akor geçişleri ve arpej çalışma uygulaması">
+<title>Gitar Gelişim</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav id="nav" aria-label="Bölümler">
+  <div class="brand"><svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="14" class="b1"/><circle cx="16" cy="16" r="5" class="b2"/><path d="M16 2v9M16 21v9" class="b2s"/></svg><span>Gitar Gelişim</span></div>
+  <button data-a="tab" data-t="home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11l8-7 8 7v9H4z"/><path d="M10 20v-5h4v5"/></svg><span>Ana</span></button>
+  <button data-a="tab" data-t="sap"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h18M3 12h18M3 17h18M8 5v14M14 5v14"/></svg><span>Sap</span></button>
+  <button data-a="tab" data-t="teori"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h10a4 4 0 0 1 4 4v12H9a4 4 0 0 1-4-4z"/><path d="M9 8h6M9 12h6"/></svg><span>Teori</span></button>
+  <button data-a="tab" data-t="makam"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18c3-8 5-12 8-12s5 4 8 12"/><path d="M8 18v-4M12 18V9M16 18v-4"/></svg><span>Makam</span></button>
+  <button data-a="tab" data-t="akor"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c4 0 7 2 7 5 0 5-4 11-7 13-3-2-7-8-7-13 0-3 3-5 7-5z"/></svg><span>Akor</span></button>
+  <button data-a="tab" data-t="ayar" class="nav-set"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg><span>Ayarlar</span></button>
+</nav>
+<div id="shell">
+<header id="hd"><button id="back" data-a="back" hidden aria-label="Geri">‹</button><span id="ttl">Gitar Gelişim</span><span id="tmr" class="pill"></span><button class="gear" data-a="tab" data-t="ayar" aria-label="Ayarlar"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg></button></header>
+<main id="app"></main>
+</div>
+<div id="modal" hidden></div>
+<script src="music.js"></script>
+<script src="audio.js"></script>
+<script src="chords.js"></script>
+<script src="theory.js"></script>
+<script src="core.js"></script>
+<script src="sap.js"></script>
+<script src="makam.js"></script>
+<script src="kulak.js"></script>
+<script src="akor.js"></script>
+<script src="main.js"></script>
+</body>
+</html>
