@@ -5,7 +5,7 @@ const $ = s => document.querySelector(s);
 const pick = M.pick;
 
 // ---------- durum ----------
-function defState() { return { v: 2, set: { nt: 'both', theme: 'auto' }, srs: {}, lv: {}, xp: 0, days: {}, pairs: {}, min1: {}, arp: { p: 0, pat: 0, bpm: 70, snd: 'arp' }, songs: null, pats: [], progs: [], seen: {} }; }
+function defState() { return { v: 2, set: { nt: 'both', theme: 'auto' }, srs: {}, lv: {}, xp: 0, days: {}, pairs: {}, min1: {}, arp: { p: 0, pat: 0, bpm: 70, snd: 'arp' }, songs: null, pats: [], progs: [], seen: {}, flow: {}, slide: { best: {} } }; }
 function migrate(s) {
   const d = defState(); if (!s || typeof s !== 'object') return d;
   for (const k in d) if (s[k] === undefined) s[k] = d[k];
@@ -157,7 +157,7 @@ function nextQ() {
   if (SES.i >= SES.cfg.count) return finish();
   let q; const ri = SES.retry.findIndex(r => r.at <= SES.i);
   if (ri >= 0) { q = SES.retry.splice(ri, 1)[0].q; q.retry = true; } else { q = SES.cfg.gen(); q.retry = false; }
-  SES.q = q; SES.locked = false; SES.picked = new Set();
+  SES.q = q; SES.locked = false; SES.picked = new Set(); SES.seq = [];
   renderQ(); SES.t0 = Date.now();
   if (q.audio) { try { if (Aud.init()) q.audio(); } catch (e) {} }
   if (q.limit) startTimer(q.limit);
@@ -175,7 +175,9 @@ function renderQ() {
   if (q.audio) h += '<button class="btn ghost listen" data-a="qplay">▶ Tekrar dinle</button>';
   if (q.limit) h += '<div class="tbar"><i id="tb"></i></div>';
   if (q.kind === 'grid') h += gridHtml();
-  else {
+  else if (q.kind === 'order') {
+    h += `<div class="oseq" id="oseq"><span class="muted">Sırayla dokun (${q.ans.length} adım)</span></div><div class="opts c${q.cols || 3}">` + q.opts.map((o, i) => `<button class="opt" data-a="oopt" data-v="${o.v}"><span class="kb">${i < 9 ? i + 1 : ''}</span>${o.html}</button>`).join('') + '</div><button class="btn ghost sm" style="margin-top:10px" data-a="oundo">↶ Geri al</button>';
+  } else {
     const act = q.kind === 'multi' ? 'mopt' : 'opt';
     h += `<div class="opts c${q.cols || 2}">` + q.opts.map((o, i) => `<button class="opt" data-a="${act}" data-v="${o.v}"><span class="kb">${i < 9 ? i + 1 : ''}</span>${o.html}</button>`).join('') + '</div>';
     if (q.kind === 'multi') h += '<button class="btn full" style="margin-top:12px" data-a="mcheck">Kontrol et</button>';
@@ -245,6 +247,17 @@ G.actions.mcheck = () => {
   document.querySelectorAll('.opt').forEach(b => { const v = b.dataset.v; b.classList.remove('on'); if (ans.includes(v)) b.classList.add('ok'); else if (SES.picked.has(v)) b.classList.add('bad'); });
   result(ok);
 };
+function drawSeq() { const el = $('#oseq'); if (!el) return; const m = {}; SES.q.opts.forEach(o => { m[o.v] = o.html; }); el.innerHTML = SES.seq.length ? SES.seq.map((v, i) => `<span class="chip" id="os${i}">${i + 1}. ${m[v]}</span>`).join('') : `<span class="muted">Sırayla dokun (${SES.q.ans.length} adım)</span>`; }
+G.actions.oopt = (d, el) => {
+  if (!SES || SES.locked || SES.q.kind !== 'order') return; SES.seq = SES.seq || [];
+  if (SES.seq.includes(d.v)) return; SES.seq.push(d.v); el.classList.add('on'); el.disabled = true; drawSeq();
+  if (SES.seq.length === SES.q.ans.length) {
+    const ok = SES.seq.every((v, i) => v === SES.q.ans[i]);
+    SES.seq.forEach((v, i) => { const c = $('#os' + i); if (c) c.classList.add(v === SES.q.ans[i] ? 'okc' : 'badc'); });
+    result(ok);
+  }
+};
+G.actions.oundo = () => { if (!SES || SES.locked || !SES.seq || !SES.seq.length) return; const v = SES.seq.pop(); document.querySelectorAll('.opt').forEach(b => { if (b.dataset.v === v) { b.classList.remove('on'); b.disabled = false; } }); drawSeq(); };
 G.actions.cell = (d, el) => {
   if (!SES || SES.locked) return;
   if (SES.picked.has(d.k)) { SES.picked.delete(d.k); el.classList.remove('on'); } else { SES.picked.add(d.k); el.classList.add('on'); }
@@ -341,7 +354,7 @@ G.actions.imp = () => { const f = $('#impf'); if (f) f.click(); };
 G.actions.reset = () => { if (confirm('Tüm ilerleme silinsin mi? Bu geri alınamaz.')) { Object.keys(S).forEach(k => delete S[k]); Object.assign(S, defState()); G.save(); G.initSongs && G.initSongs(); G.rerender(); } };
 
 G.buildTracks = function () {
-  G.regTrack('teori', buildTheory({ nn: G.nn, cn: G.cn, pcl: G.pcl }));
+  G.regTrack('teori', buildTheory({ nn: G.nn, cn: G.cn, pcl: G.pcl, board: G.board }));
   G.regTrack('makam', G.buildMakam());
   G.regTrack('kulak', G.buildKulak());
   G.regTrack('sekil', G.buildSekil());

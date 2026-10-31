@@ -146,36 +146,22 @@ function diagram(c, o) {
   return s + '</svg>';
 }
 
-// Parmak kaydırmalı geçiş grupları (aşama sırasıyla)
+// Farklı akorlar arası geçiş grupları (tonlara göre, pop'ta en sık kullanılanlar önce)
 const GROUPS = [
-  { st: 1, name: 'Do – La minör zinciri', chords: ['C', 'Am7', 'Am'],
-    tip: 'C → Am7: yüzük parmağını kaldır, işaret ve orta yerinde kalır. Am7 → Am: yüzüğü sol teline koy. En kolay başlangıç zinciri.' },
-  { st: 1, name: 'Mi ailesi (şekil kayar)', chords: ['Em', 'E', 'Am'],
-    tip: 'Em → E: sadece işaret parmağını sol teline ekle. E → Am: üçlü şekil bir tel ince tarafa kayar, parmaklar birlikte hareket eder.' },
-  { st: 1, name: 'Mi minör – Sol', chords: ['Em', 'Em7', 'G'],
-    tip: 'Em ile G’de la telindeki orta parmak (2. perde) sabit kalır. Em → Em7 için tek parmak kalkar.' },
-  { st: 1, name: 'Do – Fa maj7 – La minör 7', chords: ['C', 'Fmaj7', 'Am7'],
-    tip: 'Si telinin 1. perdesindeki işaret parmağı üçünde de sabit. Diğer parmaklar bir tel ince tarafa kayar. F barre’ın kolay alternatifi.' },
-  { st: 2, name: 'Re ailesi', chords: ['D', 'Dsus4', 'D', 'Dsus2'],
-    tip: 'D’de işaret ve yüzük sabit; serçe eklenince Dsus4, orta parmak kalkınca Dsus2. Arpejde bu süslemeler melodi gibi duyulur.' },
-  { st: 2, name: 'La süslemeleri', chords: ['A', 'Asus4', 'A', 'Asus2'],
-    tip: 'A’nın üstüne serçe ekle (Asus4) ya da yüzüğü kaldır (Asus2). Pop baladlarda bekleme anlarını süsler.' },
-  { st: 2, name: 'Re minör – La minör', chords: ['Dm', 'Dm7', 'Am'],
-    tip: 'Dm → Dm7: yüzüğü kaldır, işaret si telinde 1. perdede kalır. Dm7 → Am: işaret si telinde sabit kalarak diğerleri yer değiştirir.' },
-  { st: 2, name: 'Mi – La yedili bağ', chords: ['E', 'E7', 'A', 'A7'],
-    tip: 'E → E7 ve A → A7 tek parmak kaldırmakla olur. Minör tonda (Am) E7 karara çeken akordur.' },
-  { st: 2, name: 'Sol – Sol7 – Do', chords: ['G', 'G7', 'C'],
-    tip: 'G → G7: serçeyi bırak, işaret ince Mi’yi 1. perdeden basar. G7 → C klasik çözülüş.' },
-  { st: 2, name: 'İnen bas hattı (slash)', chords: ['C', 'G/B', 'Am', 'Am/G'],
-    tip: 'Bas notası Do – Si – La – Sol diye adım adım iner. C → G/B’de sadece bas parmağı oynar; Am → Am/G’de bas 6. tele geçer. Arpejde p parmağı melodi çalar gibi.' },
-  { st: 3, name: '1. perde barre ailesi', chords: ['F|E', 'Fm|E', 'Bb|A', 'Bbm|A'],
-    tip: 'İşaret parmağı 1. perdede sabit. Mi şekli = F (I), La şekli = B♭ (IV). Aynı perdede iki şekil, tonun I ve IV akorunu verir.' },
-  { st: 3, name: '2. perde barre ailesi', chords: ['F#m|E', 'Bm|A', 'B|A', 'F#|E'],
-    tip: 'Barre 2. perdede kalır, sadece üstteki parmaklar değişir. Bm ↔ F♯m Türkçe slow pop’ta çok sık.' },
-  { st: 3, name: '3. perde barre ailesi', chords: ['G|E', 'Gm|E', 'C|A', 'Cm|A'],
-    tip: 'Sol ve Do’yu barre ile çalmak, aynı tonu farklı renkte duyurur. Gm ↔ Cm: Kürdi ve Nihavent ezgilerinde sık geçiş.' }
+  { id: 'kG', st: 1, name: 'Sol tonu', chords: ['G', 'C', 'D', 'Em'], tip: 'Pop’un en sık tonu. G–C–D–Em ile yüzlerce şarkı çalınır. G’yi 3-2-0-0-0-3 (yüzük-orta-serçe) basarsan C’ye ve Em’e geçişte orta parmak rehber olur.' },
+  { id: 'kC', st: 1, name: 'Do tonu', chords: ['C', 'G', 'Am', 'F'], tip: 'I–V–vi–IV’ün evi. C → Am’de işaret ve orta yerinde kalır. F barre zorlarsa önce Fmaj7 ile başla, sonra tam barre’a geç.' },
+  { id: 'kAm', st: 1, name: 'La minör', chords: ['Am', 'Dm', 'E', 'G', 'C'], tip: 'Türkçe slow pop ve Nihavent rengi. Am ↔ E aynı şeklin bir tel kaymasıdır; Dm → E en zor geçiş, ona yavaş başla.' },
+  { id: 'kEm', st: 1, name: 'Mi minör', chords: ['Em', 'Am', 'B7', 'C', 'D'], tip: 'Barış Manço ve halk-rock tonu. B7 → Em karara iniş; Em → Am’de şekil aynı kalıp bir tel kayar.' },
+  { id: 'kD', st: 2, name: 'Re tonu', chords: ['D', 'G', 'A', 'Bm'], tip: 'Bm ilk barre’ın; 2. perdede La şekli. D → Bm ve A → Bm geçişlerini çok tekrarla.' },
+  { id: 'kA', st: 2, name: 'La tonu', chords: ['A', 'D', 'E', 'F#m'], tip: 'F♯m = 2. perdede Mi şekli minör barre. A → F♯m pop baladlarda çok sık.' },
+  { id: 'kE', st: 2, name: 'Mi tonu', chords: ['E', 'A', 'B7', 'C#m'], tip: 'C♯m = 4. perdede La şekli minör barre. E → C♯m (I → vi) pop’un klasik geçişi.' },
+  { id: 'k7', st: 2, name: 'Yedili renkler', chords: ['Am7', 'Dm7', 'G7', 'Cmaj7', 'Fmaj7', 'E7'], tip: 'Slow pop ve caz rengi. Dm7 → G7 → Cmaj7 = ii–V–I. Çoğu yedili, temel akordan bir parmak kalkınca oluşur.' },
+  { id: 'kS', st: 2, name: 'İnen bas (slash)', chords: ['C', 'G/B', 'Am', 'Am/G', 'F'], tip: 'Bas notası Do – Si – La – Sol – Fa diye iner. Arpejde p parmağı melodi çalar gibi duyulur.' },
+  { id: 'b1', st: 3, name: '1. perde barre ailesi', chords: ['F|E', 'Fm|E', 'Bb|A', 'Bbm|A'], tip: 'İşaret parmağı 1. perdede sabit. Mi şekli = F (I), La şekli = B♭ (IV): aynı perdede iki şekil, tonun I ve IV akoru.' },
+  { id: 'b2', st: 3, name: '2. perde barre ailesi', chords: ['F#m|E', 'Bm|A', 'B|A', 'F#|E'], tip: 'Barre 2. perdede kalır, sadece üstteki parmaklar değişir. Bm ↔ F♯m Türkçe slow pop’ta çok sık.' },
+  { id: 'b3', st: 3, name: '3. perde barre ailesi', chords: ['G|E', 'Gm|E', 'C|A', 'Cm|A'], tip: 'Gm ↔ Cm: Kürdi ve Nihavent ezgilerinde sık geçiş. G ↔ C barre ile pop’ta parlak ses.' }
 ];
-const STAGES = { 1: 'Aşama 1 · Açık akorlar, ortak parmak', 2: 'Aşama 2 · Süslemeler, yedili ve bas hatları', 3: 'Aşama 3 · Barre, sabit pozisyon' };
+const STAGES = { 1: 'Temel pop tonları', 2: 'Genişleme: barre’lı tonlar, yedili ve bas hatları', 3: 'Aynı perdede barre aileleri (şekil değişir, barre sabit)' };
 
 // Sağ el desenleri: bir desen = bir ölçü. p bas, P alternatif bas, i m a teller, c = i+m+a, x vuruş, . sus
 const PATTERNS = [
@@ -198,13 +184,22 @@ const PROGS = [
   { name: 'Kolay zincir: Am – Am7 – C – Fmaj7', ch: ['Am', 'Am7', 'C', 'Fmaj7'] },
   { name: 'Pop vi–IV–I–V: Am – F – C – G', ch: ['Am', 'F', 'C', 'G'] },
   { name: 'Pop I–V–vi–IV: C – G – Am – F', ch: ['C', 'G', 'Am', 'F'] },
-  { name: 'İnen bas: C – G/B – Am – Am/G', ch: ['C', 'G/B', 'Am', 'Am/G'] },
+  { name: 'Pop I–V–vi–IV (Sol): G – D – Em – C', ch: ['G', 'D', 'Em', 'C'] },
+  { name: '50’ler I–vi–IV–V: C – Am – F – G', ch: ['C', 'Am', 'F', 'G'] },
+  { name: 'I–IV–V–IV: G – C – D – C', ch: ['G', 'C', 'D', 'C'] },
+  { name: 'i–VI–III–VII: Em – C – G – D', ch: ['Em', 'C', 'G', 'D'] },
+  { name: 'i–VII–VI–VII: Am – G – F – G', ch: ['Am', 'G', 'F', 'G'] },
+  { name: 'iv–VII–III–VI: Dm – G – C – F', ch: ['Dm', 'G', 'C', 'F'] },
   { name: 'Minör kadans: Am – Dm – E – Am', ch: ['Am', 'Dm', 'E', 'Am'] },
-  { name: 'Sol tonu: Em – C – G – D', ch: ['Em', 'C', 'G', 'D'] },
-  { name: 'ii–V–I–vi: Dm7 – G7 – Cmaj7 – Am7', ch: ['Dm7', 'G7', 'Cmaj7', 'Am7'] },
   { name: 'Andaluz: Am – G – F – E', ch: ['Am', 'G', 'F', 'E'] },
+  { name: 'İnen bas: C – G/B – Am – Am/G', ch: ['C', 'G/B', 'Am', 'Am/G'] },
+  { name: 'ii–V–I–vi: Dm7 – G7 – Cmaj7 – Am7', ch: ['Dm7', 'G7', 'Cmaj7', 'Am7'] },
+  { name: 'Pachelbel: D – A – Bm – F#m – G – D – G – A', ch: ['D', 'A', 'Bm', 'F#m', 'G', 'D', 'G', 'A'] },
   { name: 'Barre slow: Bm – G – D – A', ch: ['Bm', 'G', 'D', 'A'] },
-  { name: 'Barre minör: F#m – D – A – E', ch: ['F#m', 'D', 'A', 'E'] }
+  { name: 'Barre minör: F#m – D – A – E', ch: ['F#m', 'D', 'A', 'E'] },
+  { name: 'Kürdi (Mi): Em – F – Em – Dm', ch: ['Em', 'F', 'Em', 'Dm'] },
+  { name: 'Hicaz (La): A – Bb – A – Gm', ch: ['A', 'Bb', 'A', 'Gm'] },
+  { name: '12 ölçü blues (La): A7 ×4 – D7 ×2 – A7 ×2 – E7 – D7 – A7 – E7', ch: ['A7', 'A7', 'A7', 'A7', 'D7', 'D7', 'A7', 'A7', 'E7', 'D7', 'A7', 'E7'] }
 ];
 
 g.CHORDS = CHORDS; g.CH = CH; g.FAMS = FAMS; g.GROUPS = GROUPS; g.STAGES = STAGES; g.PATTERNS = PATTERNS; g.PROGS = PROGS;

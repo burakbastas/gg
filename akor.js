@@ -18,13 +18,13 @@ const BARRES = ['F#', 'F#m', 'G#m', 'Ab', 'Bb', 'Bbm', 'B', 'Cm', 'C#m', 'Db', '
 G.screens.akor = function () {
   const card = (ic, t, d, attrs) => `<button class="menu" ${attrs}><span class="pic">${G.icon(ic)}</span><span><b>${t}</b><span class="muted">${d}</span></span></button>`;
   return { t: 'Akor ve arpej', cat: 'akor', h: `<h2 class="sec">Gitar elindeyken</h2><div class="menus">
-${card('gecis', 'Geçiş zincirleri', 'Ortak parmağı yerinde bırakan akor çiftleri, metronomlu antrenör ve 1 dakika testi.', 'data-a="go" data-s="zincir"')}
+${card('gecis', 'Akor geçişleri', 'Tonlara göre pop geçişleri, sapta kaydırarak akor değiştirme, barre aileleri. Metronom ve hız merdiveni.', 'data-a="go" data-s="zincir"')}
 ${card('arpej', 'Arpej atölyesi', 'Akor dizisi üzerinde p-i-m-a kalıpları; kendi desenini yaz.', 'data-a="go" data-s="arpej"')}
 ${card('sarki', 'Şarkılarım', 'Akorları yaz, desen ve tempo seç, eşlik ederken akorlar sırayla aksın.', 'data-a="go" data-s="songs"')}
 ${card('sekil', 'Akor kütüphanesi', 'Açık, 7’li, sus, slash ve barre akorlar. Akor ara.', 'data-a="go" data-s="lib"')}
 ${card('sap', 'Barre ve tonlar', 'Her tonda diatonik akorlar, Mi ve La şekli barre perdeleri.', 'data-a="go" data-s="tonlar" data-p=\'{"k":"C","t":"maj"}\'')}
 </div><h2 class="sec">Gitarsız: akor şekli oyunları</h2><div class="lvgrid">${G.levelList(G.tracks.sekil)}</div>
-<div class="menus" style="margin-top:12px">${card('teori', 'Barre Bulucu', '“Si♭ minör La şekliyle kaçıncı perde?” gibi hızlı sorular.', 'data-a="barregame"')}</div>` };
+<div class="menus" style="margin-top:12px">${card('teori', 'Barre Bulucu', '“Si♭ minör La şekliyle kaçıncı perde?”, “F’den A’ya kaç perde kayarsın?” gibi hızlı sorular.', 'data-a="barregame"')}</div>` };
 };
 
 // ---------- kütüphane ----------
@@ -63,91 +63,238 @@ G.actions.playarp = d => {
   [CHM.bassIdx(c), 3, 4, 5, 4, 3].forEach(s => { if (c.fr[s] >= 0) { Aud.pluck(M.OPEN[s] + c.fr[s], t + k * 0.26, 0.5); k++; } });
 };
 
-// ---------- zincirler ----------
+// ---------- geçiş sayfası ----------
+G.ui.zt = G.ui.zt || 'gecis'; G.ui.open = G.ui.open || 'kG';
+const pairKey = (a, b) => a + '>' + b;
+function pairStars(k) { let s = 0; if (S.pairs[k + '@4']) s = 1; if ((S.pairs[k + '@2'] || 0) >= 70) s = 2; if ((S.pairs[k + '@1'] || 0) >= 80) s = 3; return s; }
+const starH = n => `<span class="stars">${'★'.repeat(n)}<i>${'★'.repeat(3 - n)}</i></span>`;
+function groupPairs(g) { const r = []; for (let i = 0; i < g.chords.length; i++) for (let j = i + 1; j < g.chords.length; j++) r.push([g.chords[i], g.chords[j]]); return r; }
+function groupCard(g) {
+  const prs = groupPairs(g); const got = prs.reduce((a, p) => a + pairStars(pairKey(p[0], p[1])), 0);
+  const minis = g.chords.map(c => `<div class="mini">${dg(gc(c), { cls: 'mini', root: false })}<b>${G.cnPlain(c)}</b></div>`).join('');
+  const tiles = prs.map(p => {
+    const t = CHM.transition(gc(p[0]), gc(p[1])); const st = pairStars(pairKey(p[0], p[1]));
+    return `<button class="pt s${st}" data-a="go" data-s="trainer" data-p='${JSON.stringify({ a: p[0], b: p[1] })}'><b>${G.cnPlain(p[0])} ⇄ ${G.cnPlain(p[1])}</b><span>${t.stay.length ? t.stay.length + ' ortak parmak' : 'tüm parmaklar yer değiştirir'}</span>${starH(st)}</button>`;
+  }).join('');
+  const fb = S.flow[g.id];
+  return `<div class="card grp"><div class="row"><div><h3>${g.name}</h3><div class="muted">${got}/${prs.length * 3} yıldız${fb ? ` · akış rekoru ${fb} bpm` : ''}</div></div><button class="btn sm" data-a="go" data-s="trainer" data-p='${JSON.stringify({ g: g.id })}'>▶ Akış</button></div>
+<div class="minis">${minis}</div><details class="ptd"${G.ui.open === g.id ? ' open' : ''} data-g="${g.id}"><summary>${prs.length} geçiş çalış <span class="muted">· ipucu ve kutular</span></summary><p class="muted">${g.tip}</p><div class="ptiles">${tiles}</div></details></div>`;
+}
 G.screens.zincir = function () {
-  const best = (a, b) => { const k = a + '>' + b; const v = [4, 2, 1].map(n => S.pairs[k + '@' + n] ? `${n} vuruş ${S.pairs[k + '@' + n]}` : null).filter(Boolean); if (S.min1[k]) v.push(`1 dk: ${S.min1[k]} geçiş`); return v.join(' · '); };
-  let h = '<p class="muted">Sırayla ilerle. Bir çifte dokun, antrenör açılır: yeşil parmak yerinde kalır, turuncu kalkar, mavi yeni basılır.</p>';
-  [1, 2, 3].forEach(st => {
-    h += `<h2 class="sec">${STAGES[st]}</h2><div class="lvgrid">`;
-    GROUPS.filter(g => g.st === st).forEach(g => {
-      h += `<div class="card"><h3>${g.name}</h3><div class="chips">${g.chords.map(c => `<span class="chip">${cn(c)}</span>`).join('')}</div><p class="muted">${g.tip}</p><div class="row g">`;
-      const prs = []; for (let i = 0; i < g.chords.length - 1; i++) if (g.chords[i] !== g.chords[i + 1]) prs.push([g.chords[i], g.chords[i + 1]]);
-      const uniq = prs.filter((p, i) => prs.findIndex(q => q[0] === p[0] && q[1] === p[1]) === i);
-      uniq.forEach(p => { h += `<button class="btn sm ghost" data-a="go" data-s="trainer" data-p='${JSON.stringify({ a: p[0], b: p[1] })}'>${G.cnPlain(p[0])} ⇄ ${G.cnPlain(p[1])}</button>`; });
-      h += '</div>';
-      uniq.forEach(p => { const b = best(p[0], p[1]); if (b) h += `<div class="muted rec">${G.cnPlain(p[0])}⇄${G.cnPlain(p[1])} → ${b}</div>`; });
-      h += '</div>';
-    });
-    h += '</div>';
-  });
-  return { t: 'Geçiş zincirleri', cat: 'gecis', h };
+  const zt = G.ui.zt;
+  const tb = (v, l) => `<button class="btn sm ${zt === v ? 'on' : 'ghost'}" data-a="zt" data-v="${v}">${l}</button>`;
+  let h = `<div class="seg">${tb('gecis', 'Farklı akorlar')}${tb('kay', 'Kaydırma')}${tb('barre', 'Barre aileleri')}</div>`;
+  if (zt === 'kay') return { t: 'Akor geçişleri', cat: 'gecis', h: h + slideList() };
+  const all = GROUPS.filter(g => zt === 'barre' ? g.st === 3 : g.st < 3);
+  const tot = all.reduce((a, g) => a + groupPairs(g).length * 3, 0), got = all.reduce((a, g) => a + groupPairs(g).reduce((x, p) => x + pairStars(pairKey(p[0], p[1])), 0), 0);
+  h += `<div class="card sumrow"><div><b>${got}</b><span class="muted"> / ${tot} yıldız</span></div><div class="bar2"><i style="width:${tot ? got / tot * 100 : 0}%"></i></div><p class="muted">★ 4 vuruşta kayıt · ★★ 2 vuruşta 70+ bpm · ★★★ her vuruşta 80+ bpm. Bir kutuya dokun, antrenör açılır. “Akış” grubun akorlarını rastgele sırayla çaldırır, şarkıdaki gibi her akora hazırlanırsın.</p></div>`;
+  [1, 2, 3].forEach(st => { const gs = all.filter(g => g.st === st); if (!gs.length) return; h += `<h2 class="sec">${STAGES[st]}</h2><div class="lvgrid w">${gs.map(groupCard).join('')}</div>`; });
+  return { t: 'Akor geçişleri', cat: 'gecis', h, after: () => document.querySelectorAll('details.ptd').forEach(d => d.addEventListener('toggle', () => { if (d.open) G.ui.open = d.dataset.g; })) };
 };
+G.actions.zt = d => { G.ui.zt = d.v; G.rerender(); };
 
-let sch = null, m1t = null;
-const TS = { bpm: 60, beats: 4 };
-function stopSch() { if (sch) { sch.stop(); sch = null; } G.playing = false; const b = $('#play'); if (b) b.textContent = '▶ Başla'; }
-function stopM1() { if (m1t) { clearInterval(m1t); m1t = null; } }
+// ---------- geçiş antrenörü (çift ya da akış) ----------
+let sch = null;
+const TS = { bpm: 60, beats: 4, ladder: false };
+function stopSch(record) {
+  const wasLadder = sch && sch.running && TS.ladder && sch.lad;
+  if (sch) { sch.stop(); } const s = sch; sch = null; G.playing = false;
+  const b = $('#play'); if (b) b.textContent = '▶ Başla';
+  if (record && wasLadder && s) {
+    const top = Math.max(s.lad.start, TS.bpm - 4); TS.bpm = s.lad.start;
+    s.lad.save(top);
+    const r = $('#bpm'); if (r) { r.value = TS.bpm; $('#bpmv').textContent = TS.bpm + ' bpm'; }
+    G.modal(`<h3>Hız merdiveni</h3><p class="big">${top} bpm</p><p class="muted">Rahat çaldığın son tempo (${TS.beats} vuruşta bir geçiş). Kaydedildi. Yarın bunu geçmeyi dene.</p>`);
+  }
+}
+function ladBtn() { return `<button class="btn sm ${TS.ladder ? 'on' : 'ghost'}" data-a="tlad">Hız merdiveni: ${TS.ladder ? 'açık' : 'kapalı'}</button>`; }
+G.actions.tlad = (d, el) => { TS.ladder = !TS.ladder; el.outerHTML = ladBtn(); };
 G.screens.trainer = function (p) {
-  const a = gc(p.a), b = gc(p.b), t = CHM.transition(a, b);
-  const key = p.a + '>' + p.b;
+  const grp = p.g ? GROUPS.find(g => g.id === p.g) : null;
+  const list = grp ? grp.chords : [p.a, p.b];
+  const key = grp ? null : pairKey(p.a, p.b);
+  const a = gc(list[0]), b = gc(list[1]); const t = CHM.transition(a, b);
   const seg = [4, 2, 1].map(n => `<button class="btn sm ${TS.beats === n ? 'on' : 'ghost'}" data-a="tbeats" data-v="${n}">${n} vuruş</button>`).join('');
-  return { t: 'Geçiş antrenörü', cat: 'gecis',
-    h: `<div class="two"><div class="card"><div class="pair big2"><div id="da">${dg(a, { marks: CHM.marksFor(t, 'a'), cls: 'lg' })}<b>${cn(p.a)}</b></div><div id="db">${dg(b, { marks: CHM.marksFor(t, 'b'), cls: 'lg' })}<b>${cn(p.b)}</b></div></div>
-<div class="legend"><span><i class="lg lst"></i>ortak (${t.stay.length})</span><span><i class="lg llv"></i>kalkar (${t.leave.length})</span><span><i class="lg lar"></i>yeni (${t.arrive.length})</span></div></div>
+  return { t: grp ? grp.name + ' · akış' : 'Geçiş antrenörü', cat: 'gecis',
+    h: `<div class="two"><div class="card"><div class="pair big2"><div id="da" class="cur"><span class="muted">Şimdi</span><div id="dad">${dg(a, { marks: CHM.marksFor(t, 'a'), cls: 'lg' })}</div><b id="dan">${cn(a.n)}</b></div><div id="db"><span class="muted">Sıradaki</span><div id="dbd">${dg(b, { marks: CHM.marksFor(t, 'b'), cls: 'lg' })}</div><b id="dbn">${cn(b.n)}</b></div></div>
+<div class="legend"><span><i class="lg lst"></i>yerinde kalır</span><span><i class="lg llv"></i>kalkar</span><span><i class="lg lar"></i>yeni basılır</span></div>
+${grp ? `<div class="chips" style="margin-top:10px">${list.map(c => `<span class="chip">${cn(c)}</span>`).join('')}</div><p class="muted">Akorlar rastgele sırayla gelir. Sıradaki akoru önceden görürsün; son vuruşta el yola çıkmış olmalı.</p>` : ''}</div>
 <div><div class="card"><div id="hint" class="hint">Hazır</div>
-<div class="row"><span>Tempo</span><b id="bpmv">${TS.bpm} bpm</b></div><input type="range" id="bpm" min="40" max="160" value="${TS.bpm}" aria-label="tempo">
+<div class="row"><span>Tempo</span><b id="bpmv">${TS.bpm} bpm</b></div><input type="range" id="bpm" min="40" max="180" value="${TS.bpm}" aria-label="tempo">
 <div class="muted">Akor başına vuruş</div><div class="seg">${seg}</div>
-<div class="row g"><button class="btn" id="play" data-a="tplay" data-k="${key}">▶ Başla</button><button class="btn ghost" data-a="tclean" data-k="${key}">Temiz yaptım ✓</button></div>
-<div class="muted" id="best" style="margin-top:8px"></div></div>
-<div class="card"><h3>1 dakika testi</h3><p class="muted">60 saniyede iki akor arasında kaç temiz geçiş yapabiliyorsun? Her geçişte büyük düğmeye dokun (ya da boşluk tuşu). Her gün bir kez yap, sayı arttıkça geçiş otomatikleşir.</p>
-<div class="m1"><div id="m1c" class="m1c">60</div><button class="btn full big" id="m1b" data-a="m1" data-k="${key}">Testi başlat</button></div></div></div></div>`,
+<div class="row g"><button class="btn" id="play" data-a="tplay" data-k="${key || ''}" data-g="${grp ? grp.id : ''}" data-l='${JSON.stringify(list)}'>▶ Başla</button>${key ? `<button class="btn ghost" data-a="tclean" data-k="${key}">Temiz yaptım ✓</button>` : ''}${ladBtn()}</div>
+<p class="muted" id="best" style="margin-top:8px"></p></div>
+<div class="card"><h3>Nasıl çalışılır</h3><p class="muted">1. 4 vuruşla, 50–60 bpm’de temiz çal. Temizse “Temiz yaptım”a bas.<br>2. Hız merdivenini aç: her 4 ölçüde tempo 4 bpm artar, sen sadece çalarsın. Yetişemediğin an Durdur’a bas; rahat çaldığın son tempo kaydedilir.<br>3. 2 vuruşa, sonra her vuruşta bir geçişe in.</p></div></div></div>`,
     after: () => {
       const r = $('#bpm'); if (r) r.oninput = () => { TS.bpm = +r.value; $('#bpmv').textContent = TS.bpm + ' bpm'; };
-      showBest(key); G.onStop(stopSch); G.onStop(stopM1);
+      showBest(key, grp); G.onStop(() => stopSch(false));
     } };
 };
-function showBest(key) { const el = $('#best'); if (!el) return; const v = [4, 2, 1].map(n => { const x = S.pairs[key + '@' + n]; return x ? `${n} vuruş: ${x} bpm` : null; }).filter(Boolean); el.textContent = v.length ? 'En iyi temiz hızın → ' + v.join(' · ') : 'Temiz yapabildiğin hızda “Temiz yaptım”a bas; rekorun kaydedilir. 50 bpm’den başla, 5’er artır.'; }
+function showBest(key, grp) {
+  const el = $('#best'); if (!el) return;
+  if (grp) { el.textContent = S.flow[grp.id] ? `Akış rekorun: ${S.flow[grp.id]} bpm` : 'Henüz akış kaydın yok. Hız merdiveniyle dene.'; return; }
+  const v = [4, 2, 1].map(n => { const x = S.pairs[key + '@' + n]; return x ? `${n} vuruş: ${x} bpm` : null; }).filter(Boolean);
+  el.textContent = v.length ? 'Rekorların → ' + v.join(' · ') : 'Henüz kayıt yok. 50 bpm’den başla.';
+}
 G.actions.tbeats = d => { TS.beats = +d.v; document.querySelectorAll('[data-a=tbeats]').forEach(b => { const on = +b.dataset.v === TS.beats; b.classList.toggle('on', on); b.classList.toggle('ghost', !on); }); };
 G.actions.tclean = d => { const k = d.k + '@' + TS.beats; if (!S.pairs[k] || S.pairs[k] < TS.bpm) S.pairs[k] = TS.bpm; S.xp += 10; G.save(); showBest(d.k); };
+function setPair(cur, nxt) {
+  const t = CHM.transition(cur, nxt);
+  const ad = $('#dad'); if (!ad) return;
+  ad.innerHTML = dg(cur, { marks: CHM.marksFor(t, 'a'), cls: 'lg' }); $('#dan').innerHTML = cn(cur.n);
+  $('#dbd').innerHTML = dg(nxt, { marks: CHM.marksFor(t, 'b'), cls: 'lg' }); $('#dbn').innerHTML = cn(nxt.n);
+}
 G.actions.tplay = d => {
-  if (sch && sch.running) { stopSch(); return; }
-  const parts = d.k.split('>'); const a = gc(parts[0]), b = gc(parts[1]);
+  if (sch && sch.running) { stopSch(true); return; }
+  const list = JSON.parse(d.l).map(gc); const flow = !!d.g;
+  const seq = [0, 1]; const nextIdx = i => { if (!flow) return 1 - i; let n; do { n = M.rnd(list.length); } while (n === i); return n; };
   G.playing = true; $('#play').textContent = '■ Durdur';
+  let bar = -1;
   sch = makeScheduler((i, t, api) => {
-    const beat = i % TS.beats, bar = Math.floor(i / TS.beats);
-    const cur = bar % 2 === 0 ? a : b, nxt = bar % 2 === 0 ? b : a;
+    const beat = i % TS.beats;
+    if (beat === 0) { bar++; if (bar > 0) { seq[0] = seq[1]; seq[1] = nextIdx(seq[0]); }
+      if (TS.ladder && bar > 0 && bar % 4 === 0) { TS.bpm = Math.min(180, TS.bpm + 4); api.at(t, () => { const r = $('#bpm'); if (r) { r.value = TS.bpm; $('#bpmv').textContent = TS.bpm + ' bpm'; } }); } }
+    const cur = list[seq[0]], nxt = list[seq[1]];
     Aud.click(t, beat === 0);
     if (beat === 0) Aud.strum(cur.fr, t, 0.28, 0.025);
+    const b0 = bar;
     api.at(t, () => {
-      const ea = $('#da'), eb = $('#db'), hint = $('#hint'); if (!hint) return;
-      ea.classList.toggle('cur', cur === a); eb.classList.toggle('cur', cur === b);
-      const prep = TS.beats > 1 && beat === TS.beats - 1;
-      hint.classList.toggle('prep', prep);
-      hint.textContent = prep ? `HAZIRLAN → ${G.cnPlain(nxt.n)}` : `ŞİMDİ: ${G.cnPlain(cur.n)}`;
+      const hint = $('#hint'); if (!hint) return;
+      if (beat === 0) setPair(cur, nxt);
+      const prep = TS.beats > 1 ? beat === TS.beats - 1 : true;
+      hint.classList.toggle('prep', prep && TS.beats > 1);
+      hint.textContent = TS.beats > 1 && prep ? `HAZIRLAN → ${G.cnPlain(nxt.n)}` : `ŞİMDİ: ${G.cnPlain(cur.n)}${b0 >= 0 && TS.ladder ? ' · ' + TS.bpm + ' bpm' : ''}`;
     });
     return 60 / TS.bpm;
   });
+  sch.lad = TS.ladder ? { start: TS.bpm, save: top => {
+    if (flow) { if (!S.flow[d.g] || S.flow[d.g] < top) S.flow[d.g] = top; }
+    else { const k = d.k + '@' + TS.beats; if (!S.pairs[k] || S.pairs[k] < top) S.pairs[k] = top; }
+    S.xp += 15; G.save(); showBest(flow ? null : d.k, flow ? GROUPS.find(g => g.id === d.g) : null);
+  } } : null;
   sch.start();
 };
-G.actions.m1 = d => {
-  const btn = $('#m1b'), c = $('#m1c');
-  if (!m1t) {
-    let left = 60, n = 0; btn.dataset.n = 0; btn.textContent = '+1 geçiş'; c.textContent = '60'; c.classList.add('run');
-    G.playing = true;
-    m1t = setInterval(() => {
-      left--; c.textContent = left;
-      if (left <= 0) {
-        stopM1(); n = +btn.dataset.n; c.classList.remove('run');
-        const prev = S.min1[d.k] || 0; if (n > prev) S.min1[d.k] = n; S.xp += 15; G.save();
-        c.textContent = n; btn.textContent = 'Tekrar başlat';
-        G.modal(`<h3>1 dakika testi</h3><p class="big">${n} geçiş</p><p class="muted">${n > prev ? (prev ? `Yeni rekor! (önceki ${prev})` : 'İlk kayıt.') : `Rekorun ${prev}.`} Hedef: 60 (saniyede bir).</p>`);
-      }
-    }, 1000);
-    return;
-  }
-  btn.dataset.n = +btn.dataset.n + 1; btn.textContent = `+1 geçiş · ${btn.dataset.n}`;
+
+// ---------- kaydırma: aynı şekli sapta kaydırarak akor değiştirme ----------
+const SL = {
+  E: { n: 'Mi şekli barre', d: 'Kök 6. telde. Tam akor; F = 1, G = 3, A = 5, B = 7, C = 8, D = 10.' },
+  A: { n: 'La şekli barre', d: 'Kök 5. telde. B♭ = 1, C = 3, D = 5, E = 7, F = 8, G = 10.' },
+  EA: { n: 'Mi + La (en az hareket)', d: 'Her akor için ele en yakın şekil seçilir. Barre’lı pop çalmanın standart yolu: el 2-3 perdelik bölgede kalır.' },
+  P6: { n: 'Power chord · 6. tel', d: 'Barresiz, 3 parmak. Majör/minör farkı yok; rock-pop eşlikte en hızlı kaydırma.' },
+  P5: { n: 'Power chord · 5. tel', d: 'Barresiz, 5. telde kök. 6. tel şekliyle birleşince her akor elinin altında.' },
+  T3: { n: 'Üst 3 tel mini akor', d: 'Barresiz, 1-2 parmak. Kök 1. telde (6. tel ile aynı perde). Arpej ve süsleme için çok hafif.' }
 };
-document.addEventListener('keydown', e => { if (m1t && e.key === ' ' && !/INPUT|TEXTAREA/.test((e.target || {}).tagName || '')) { e.preventDefault(); const b = $('#m1b'); if (b) b.click(); } });
+const SLX = [
+  { id: 'x1', name: 'Basamak: F – G – A – B', ch: ['F', 'G', 'A', 'B'], sh: 'E', note: 'Senin örneğin: Mi şekli barre 1’den 3’e, 5’e, 7’ye kayar. Parmaklar hiç açılmaz, el tek parça kayar.' },
+  { id: 'x2', name: 'Minör basamak: Fm – Gm – Am – Bm', ch: ['Fm', 'Gm', 'Am', 'Bm'], sh: 'E', note: 'Aynı kayma, minör şekille.' },
+  { id: 'x3', name: 'La şekli basamak: B♭ – C – D – E', ch: ['Bb', 'C', 'D', 'E'], sh: 'A', note: '5. tel kökte aynı mantık: 1 → 3 → 5 → 7.' },
+  { id: 'x4', name: 'Kromatik: F – F♯ – G – A♭ – A', ch: ['F', 'F#', 'G', 'Ab', 'A'], sh: 'E', note: 'Her adım 1 perde. Kaymayı kontrollü yapmayı öğretir.' },
+  { id: 'x5', name: 'i–VII–VI: Am – G – F', ch: ['Am', 'G', 'F'], sh: 'E', note: 'Türkçe pop ve rock’un inen klasik kalıbı: 5 → 3 → 1.' },
+  { id: 'x6', name: 'Andaluz: Am – G – F – E', ch: ['Am', 'G', 'F', 'E'], sh: 'E', note: 'Nihavent/Hicaz rengi. E son adımda boş tel (0) olur.' },
+  { id: 'x7', name: 'I–IV–V: A – D – E', ch: ['A', 'D', 'E'], sh: 'EA', note: 'Tek şekille kaydırmak uzun atlama ister; Mi + La karışık çalınca el 5. perde civarında kalır.' },
+  { id: 'x8', name: 'I–V–vi–IV: G – D – Em – C', ch: ['G', 'D', 'Em', 'C'], sh: 'EA', note: 'Pop’un en sık dizilimi, barre ile tek bölgede.' },
+  { id: 'x9', name: 'vi–IV–I–V: Am – F – C – G', ch: ['Am', 'F', 'C', 'G'], sh: 'EA', note: 'Minörle başlayan pop kalıbı.' },
+  { id: 'x10', name: 'Nihavent: Am – Dm – E – Am', ch: ['Am', 'Dm', 'E', 'Am'], sh: 'EA', note: 'Am ve Dm aynı perdede (5), E bir perde geride.' },
+  { id: 'x11', name: 'Kürdi (Mi): Em – F – G – F', ch: ['Em', 'F', 'G', 'F'], sh: 'E', note: 'Mi Kürdi’nin karakteristik yarım ses kayması: 0 → 1 → 3 → 1.' },
+  { id: 'x12', name: 'Power: E – G – A – C', ch: ['E', 'G', 'A', 'C'], sh: 'P6', note: '0 → 3 → 5 → 8. Rock eşliğin temeli.' },
+  { id: 'x13', name: 'Power: A – C – D – F', ch: ['A', 'C', 'D', 'F'], sh: 'P5', note: '5. telde aynı kalıp.' },
+  { id: 'x14', name: 'Mini akor: C – F – G – C', ch: ['C', 'F', 'G', 'C'], sh: 'T3', note: 'Üst üç telde kayan hafif akorlar; arpej yaparken bas olarak boş telleri ekleyebilirsin.' }
+];
+const PSH = { P6: { rel: [0, 2, 2, -1, -1, -1], fg: [1, 3, 4, 0, 0, 0], openPc: 4 }, P5: { rel: [-1, 0, 2, 2, -1, -1], fg: [0, 1, 3, 4, 0, 0], openPc: 9 } };
+const T3S = { '': { rel: [-1, -1, -1, 1, 0, 0], fg: [0, 0, 0, 2, 1, 1] }, m: { rel: [-1, -1, -1, 0, 0, 0], fg: [0, 0, 0, 1, 1, 1] }, openPc: 4 };
+function slideChord(name, sh, prev) {
+  const p = M.chordParse(name); const pc = M.pcOf(p.root);
+  const tri = (p.q === 'm' || p.q === 'm7') ? 'm' : '';
+  const cands = [];
+  const add = (s, rel, fg, openPc) => { const b = M.mod(pc - openPc, 12); [b, b + 12].filter(n => n + Math.max.apply(null, rel) <= 15).forEach(n => cands.push({ s, n, rel, fg })); };
+  if (sh === 'E' || sh === 'A' || sh === 'EA') ['E', 'A'].filter(s => sh === 'EA' || s === sh).forEach(s => { const d = CHM.SHAPES[s][p.q] || CHM.SHAPES[s][tri]; add(s, d.rel, d.fg, CHM.SHAPES[s].openPc); });
+  else if (sh === 'T3') add('T3', T3S[tri].rel, T3S[tri].fg, T3S.openPc);
+  else add(sh, PSH[sh].rel, PSH[sh].fg, PSH[sh].openPc);
+  let best;
+  if (prev == null) { cands.sort((x, y) => x.n - y.n || (x.s === 'E' ? -1 : 1)); best = cands[0]; }
+  else { cands.sort((x, y) => Math.abs(x.n - prev) - Math.abs(y.n - prev) || x.n - y.n); best = cands[0]; }
+  const n = best.n;
+  return { n: name, sh: best.s, fret: n, fr: best.rel.map(x => x < 0 ? -1 : x + n), fg: n === 0 ? best.rel.map((x, i) => x > 0 ? Math.max(1, best.fg[i] - 1) : 0) : best.fg.slice() };
+}
+function slidePath(ch, sh) { let prev = null; return ch.map(c => { const r = slideChord(c, sh, prev); prev = r.fret; return r; }); }
+const shN = s => ({ E: 'Mi şekli', A: 'La şekli', P6: 'power 6. tel', P5: 'power 5. tel', T3: 'üst 3 tel' })[s];
+const fpos = n => n === 0 ? 'boş tel' : n + '. perde';
+function slideList() {
+  const cards = SLX.map(x => { const path = slidePath(x.ch, x.sh); const b = S.slide.best[x.id];
+    return `<button class="menu sx" data-a="go" data-s="slide" data-p='${JSON.stringify({ id: x.id })}'><span><b>${x.name}</b><span class="muted">${SL[x.sh].n}</span><span class="frets">${path.map((c, i) => `${i ? `<em>${c.fret - path[i - 1].fret > 0 ? '+' : ''}${c.fret - path[i - 1].fret}</em>` : ''}<span>${G.cnPlain(c.n)}<i>${c.fret}</i></span>`).join('')}</span>${b ? `<span class="muted">rekor ${b} bpm</span>` : ''}</span></button>`; }).join('');
+  return `<div class="intro"><p><b>Kaydırma:</b> sol el şeklini hiç bozmadan sapta ilerleyerek akor değiştirirsin. Şeklin adı kök telindeki notadan gelir: Mi şeklinde 6. tel, La şeklinde 5. tel. Akorun perdesini bilirsen her tonda çalarsın. Kaymadan önce parmak baskısını gevşet, tellerden kaldırma, yeni perdede tekrar bas.</p></div>
+<h2 class="sec">Alıştırmalar</h2><div class="menus">${cards}</div>
+<div class="card" style="margin-top:12px"><h3>Kendi dizini kaydır</h3><p class="muted">Akorları yaz (majör, m, 7, m7). Örnek: <code>C Am F G</code></p><div class="search"><input id="slc" placeholder="C Am F G" autocapitalize="off" autocomplete="off"><button class="btn sm" data-a="slcustom">Aç</button></div><div id="slerr" class="err"></div></div>`;
+}
+G.actions.slcustom = () => {
+  const r = G.parseBars(($('#slc') || {}).value || ''); const ok = r.bars.filter(b => { const p = M.chordParse(b); return p && ['', 'm', '7', 'm7'].includes(p.q) && !p.bass; });
+  if (r.bad.length || !ok.length || ok.length !== r.bars.length) { $('#slerr').textContent = 'Sadece majör, m, 7, m7 akorlar (slash ve sus olmadan).'; return; }
+  G.go('slide', { custom: ok.map(CHM.baseName) });
+};
+const SLS = { bpm: 60, beats: 4 };
+let ssch = null;
+function stopSlide(rec) {
+  const lad = ssch && ssch.running && ssch.lad; if (ssch) ssch.stop(); const s = ssch; ssch = null; G.playing = false;
+  const b = $('#splay'); if (b) b.textContent = '▶ Başla';
+  if (rec && lad && s) { const top = Math.max(s.lad.start, SLS.bpm - 4); SLS.bpm = s.lad.start; s.lad.save(top); const r = $('#sbpm'); if (r) { r.value = SLS.bpm; $('#sbpmv').textContent = SLS.bpm + ' bpm'; } G.modal(`<h3>Hız merdiveni</h3><p class="big">${top} bpm</p><p class="muted">Rahat kaydırdığın son tempo kaydedildi.</p>`); }
+}
+G.screens.slide = function (p) {
+  const x = p.custom ? { id: 'custom', name: 'Kendi dizin', ch: p.custom, sh: p.sh || 'EA', note: '' } : SLX.find(e => e.id === p.id);
+  const sh = p.sh || x.sh, tr = p.tr || 0;
+  const ch = x.ch.map(c => M.transposeName(c, tr));
+  const path = slidePath(ch, sh);
+  const shBtns = Object.keys(SL).map(k => `<button class="chipb ${k === sh ? 'on' : ''}" data-a="slsh" data-v="${k}">${SL[k].n}</button>`).join('');
+  const seqH = path.map((c, i) => `${i ? `<em class="arr">${c.fret - path[i - 1].fret > 0 ? '+' : ''}${c.fret - path[i - 1].fret}</em>` : ''}<span class="chip ${i === 0 ? 'cur' : ''}" id="sc${i}">${G.cnPlain(c.n)} · ${c.fret}</span>`).join('');
+  const seg = [4, 2, 1].map(n => `<button class="btn sm ${SLS.beats === n ? 'on' : 'ghost'}" data-a="slbeats" data-v="${n}">${n} vuruş</button>`).join('');
+  G.ui.slide = { p, path, x };
+  const best = S.slide.best[x.id];
+  return { t: x.name, cat: 'gecis', h: `<div class="card"><div class="chips">${shBtns}</div><p class="muted">${SL[sh].d}${x.note ? ' ' + x.note : ''}</p>
+<div class="row"><div class="slseq">${seqH}</div><div class="row"><button class="btn sm ghost" data-a="sltr" data-v="-1" aria-label="yarım ses aşağı">− ½</button><span class="muted">Ton ${tr > 0 ? '+' : ''}${tr}</span><button class="btn sm ghost" data-a="sltr" data-v="1" aria-label="yarım ses yukarı">+ ½</button></div></div>
+<div class="fbwrap scroll" id="slb">${slideBoard(path[0], path[1 % path.length])}</div>
+<div class="legend"><span><i class="lg k"></i>şimdi (parmak no.)</span><span><i class="lg n"></i>sıradaki</span></div></div>
+<div class="two"><div class="card"><div class="pair big2"><div class="cur"><span class="muted">Şimdi</span><div id="sdn">${slideCardH(path[0])}</div></div><div><span class="muted">Sıradaki</span><div id="sdx">${slideCardH(path[1 % path.length], path[0])}</div></div></div></div>
+<div class="card"><div id="shint" class="hint">Hazır</div><div class="row"><span>Tempo</span><b id="sbpmv">${SLS.bpm} bpm</b></div><input type="range" id="sbpm" min="40" max="180" value="${SLS.bpm}" aria-label="tempo">
+<div class="muted">Akor başına vuruş</div><div class="seg">${seg}</div>
+<div class="row g"><button class="btn" id="splay" data-a="slplay">▶ Başla</button>${ladBtnS()}</div><p class="muted">${best ? `Rekorun: ${best} bpm` : 'Hız merdiveni açıkken her 4 ölçüde tempo 4 artar; yetişemeyince Durdur’a bas.'}</p></div></div>`,
+    after: () => { const r = $('#sbpm'); if (r) r.oninput = () => { SLS.bpm = +r.value; $('#sbpmv').textContent = SLS.bpm + ' bpm'; }; G.onStop(() => stopSlide(false)); } };
+};
+function slideCardH(c, prev) { return `${dg(c, { cls: 'lg' })}<b>${cn(c.n)}</b><div class="muted">${shN(c.sh)} · ${fpos(c.fret)}${prev ? ` (${c.fret - prev.fret > 0 ? '+' : ''}${c.fret - prev.fret})` : ''}</div>`; }
+function slideBoard(cur, nxt) {
+  const dots = [];
+  nxt.fr.forEach((f, s) => { if (f >= 0 && cur.fr[s] !== f) dots.push({ s, f, cls: 'n' }); });
+  cur.fr.forEach((f, s) => { if (f >= 0) dots.push({ s, f, cls: 'k', t: cur.fg[s] ? String(cur.fg[s]) : '' }); });
+  return G.board({ dots, frets: 15 });
+}
+function ladBtnS() { return `<button class="btn sm ${TS.ladder ? 'on' : 'ghost'}" data-a="sllad">Hız merdiveni: ${TS.ladder ? 'açık' : 'kapalı'}</button>`; }
+G.actions.sllad = (d, el) => { TS.ladder = !TS.ladder; el.outerHTML = ladBtnS(); };
+G.actions.slsh = d => { const u = G.ui.slide; G.replace('slide', Object.assign({}, u.p, { sh: d.v })); };
+G.actions.sltr = d => { const u = G.ui.slide; let tr = (u.p.tr || 0) + +d.v; if (tr > 6) tr = -5; if (tr < -5) tr = 6; G.replace('slide', Object.assign({}, u.p, { tr })); };
+G.actions.slbeats = d => { SLS.beats = +d.v; document.querySelectorAll('[data-a=slbeats]').forEach(b => { const on = +b.dataset.v === SLS.beats; b.classList.toggle('on', on); b.classList.toggle('ghost', !on); }); };
+G.actions.slplay = () => {
+  if (ssch && ssch.running) { stopSlide(true); return; }
+  const u = G.ui.slide, path = u.path, n = path.length;
+  G.playing = true; $('#splay').textContent = '■ Durdur';
+  let bar = -1;
+  ssch = makeScheduler((i, t, api) => {
+    const beat = i % SLS.beats; if (beat === 0) { bar++; if (TS.ladder && bar > 0 && bar % 4 === 0) { SLS.bpm = Math.min(180, SLS.bpm + 4); api.at(t, () => { const r = $('#sbpm'); if (r) { r.value = SLS.bpm; $('#sbpmv').textContent = SLS.bpm + ' bpm'; } }); } }
+    const ci = bar % n, cur = path[ci], nxt = path[(ci + 1) % n];
+    Aud.click(t, beat === 0); if (beat === 0) Aud.strum(cur.fr, t, 0.28, 0.025);
+    api.at(t, () => {
+      const h = $('#shint'); if (!h) return;
+      if (beat === 0) {
+        $('#slb').innerHTML = slideBoard(cur, nxt); $('#sdn').innerHTML = slideCardH(cur); $('#sdx').innerHTML = slideCardH(nxt, cur);
+        document.querySelectorAll('.slseq .chip').forEach((e, j) => e.classList.toggle('cur', j === ci));
+      }
+      const prep = SLS.beats > 1 && beat === SLS.beats - 1; const dlt = nxt.fret - cur.fret;
+      h.classList.toggle('prep', prep);
+      h.textContent = prep ? `KAY → ${G.cnPlain(nxt.n)}: ${fpos(nxt.fret)} (${dlt > 0 ? '+' : ''}${dlt})` : `ŞİMDİ: ${G.cnPlain(cur.n)} · ${fpos(cur.fret)}${TS.ladder ? ' · ' + SLS.bpm + ' bpm' : ''}`;
+    });
+    return 60 / SLS.bpm;
+  });
+  ssch.lad = TS.ladder ? { start: SLS.bpm, save: top => { const id = u.x.id; if (!S.slide.best[id] || S.slide.best[id] < top) S.slide.best[id] = top; S.xp += 15; G.save(); } } : null;
+  ssch.start();
+};
+G.slideChord = slideChord;
 
 // ---------- arpej motoru (atölye ve şarkılar ortak) ----------
 const allPats = () => PATTERNS.concat(S.pats);
@@ -267,21 +414,40 @@ function parseBars(txt) {
   return { bars, bad };
 }
 G.parseBars = parseBars;
+const TEMPL = [
+  { id: 's1', name: 'Şablon · Slow pop (vi–IV–I–V)', txt: 'Am F C G | Am F C G | Dm F C G*2', pat: 'a7', bpm: 62, kapo: 0, ex: 1 },
+  { id: 's2', name: 'Şablon · Nihavent balad (La, 6/8)', txt: 'Am Dm E Am | F Dm E*2', pat: 'a2', bpm: 66, kapo: 0, ex: 1 },
+  { id: 's3', name: 'Şablon · Hicaz (La)', txt: 'A Bb A A | Dm C Bb A', pat: 'a3', bpm: 78, kapo: 0, ex: 1 },
+  { id: 's4', name: 'Şablon · İnen bas hattı', txt: 'C G/B Am Am/G | F C/E Dm7 G', pat: 'a4', bpm: 72, kapo: 0, ex: 1 },
+  { id: 's5', name: 'Şablon · Kürdilihicazkâr (Mi)', txt: 'Em F Em Em | Am G F Em', pat: 'a3', bpm: 74, kapo: 0, ex: 1 },
+  { id: 's6', name: 'Şablon · Pop I–V–vi–IV (Sol)', txt: 'G D Em C | G D Em C | C D G Em | C D G*2', pat: 'a3', bpm: 76, kapo: 0, ex: 1 },
+  { id: 's7', name: 'Şablon · 50’ler balad I–vi–IV–V', txt: 'C Am F G | C Am F G | F G C Am | F G C*2', pat: 'a2', bpm: 68, kapo: 0, ex: 1 },
+  { id: 's8', name: 'Şablon · Minör pop i–VI–III–VII', txt: 'Em C G D | Em C G D | C D Em*2', pat: 'a7', bpm: 64, kapo: 0, ex: 1 },
+  { id: 's9', name: 'Şablon · Canon (Pachelbel)', txt: 'D A Bm F#m | G D G A', pat: 'a9', bpm: 70, kapo: 0, ex: 1 },
+  { id: 's10', name: 'Şablon · ii–V–I caz balad', txt: 'Dm7 G7 Cmaj7 Am7 | Dm7 G7 Cmaj7*2', pat: 'a4', bpm: 66, kapo: 0, ex: 1 },
+  { id: 's11', name: 'Şablon · 12 ölçü blues (La)', txt: 'A7*4 D7*2 A7*2 E7 D7 A7 E7', pat: 'a5', bpm: 84, kapo: 0, ex: 1 },
+  { id: 'bm1', name: 'Barış Manço · Gülpembe', txt: 'Em Am Em D G F Em | Am Em D G F Em | D Em D Em D Em D Em | Em Am Em D G F Em', pat: 'a3', bpm: 72, kapo: 0, bm: 1 },
+  { id: 'bm2', name: 'Barış Manço · Dönence', txt: 'Em F Em F | Em F Em F Em*2', pat: 'a7', bpm: 64, kapo: 0, bm: 1 },
+  { id: 'bm3', name: 'Barış Manço · Unutamadım', txt: 'Bm Em Bm Em Bm | Em D C Bm | Em D C Bm | Bm C Bm C Bm | D C Bm D C Bm | Em D C Bm', pat: 'a3', bpm: 70, kapo: 1, bm: 1, note: 'Orijinal ton Do minör; kapo 1 ile Si minör şekilleri.' },
+  { id: 'bm4', name: 'Barış Manço · Arkadaşım Eşek', txt: 'Em Am Em Am Em B Em | Em Am Em | Am Em B Em | Am Em | Am Em B Em', pat: 'a4', bpm: 92, kapo: 0, bm: 1 },
+  { id: 'bm5', name: 'Barış Manço · Sarı Çizmeli Mehmet Ağa', txt: 'Em*2 | Am Em F G Em | Am Em F G Em', pat: 'a4', bpm: 80, kapo: 0, bm: 1 },
+  { id: 'bm6', name: 'Barış Manço · Kara Sevda', txt: 'Am Dm E Am Dm E | Am G Am Am G Am | Dm Am E Am Dm Am E Am', pat: 'a3', bpm: 76, kapo: 4, bm: 1, note: 'Orijinal ton Do♯ minör; kapo 4 ile La minör şekilleri.' },
+  { id: 'bm7', name: 'Barış Manço · Domates Biber Patlıcan', txt: 'Em Bm Em Bm Am Em Bm Em | Em C Em C D Bm D Em', pat: 'a4', bpm: 96, kapo: 3, bm: 1, note: 'Orijinal ton Sol minör; kapo 3 ile Mi minör şekilleri.' },
+  { id: 'bm8', name: 'Barış Manço · Gesi Bağları', txt: 'Em Am | Em Am F Em | Am Em Am F Em', pat: 'a2', bpm: 66, kapo: 1, bm: 1, note: 'Orijinal ton Fa minör; kapo 1 ile Mi minör şekilleri.' }
+];
 G.initSongs = () => {
-  if (S.songs) return;
-  S.songs = [
-    { id: 's1', name: 'Şablon · Slow pop (vi–IV–I–V)', txt: 'Am F C G | Am F C G | Dm F C G*2', pat: 'a7', bpm: 62, kapo: 0, ex: 1 },
-    { id: 's2', name: 'Şablon · Nihavent balad (La, 6/8)', txt: 'Am Dm E Am | F Dm E*2', pat: 'a2', bpm: 66, kapo: 0, ex: 1 },
-    { id: 's3', name: 'Şablon · Hicaz (La)', txt: 'A Bb A A | Dm C Bb A', pat: 'a3', bpm: 78, kapo: 0, ex: 1 },
-    { id: 's4', name: 'Şablon · İnen bas hattı', txt: 'C G/B Am Am/G | F C/E Dm7 G', pat: 'a4', bpm: 72, kapo: 0, ex: 1 },
-    { id: 's5', name: 'Şablon · Kürdilihicazkâr (Mi)', txt: 'Em F Em Em | Am G F Em', pat: 'a3', bpm: 74, kapo: 0, ex: 1 }
-  ];
+  if (!S.songs) S.songs = [];
+  const have = new Set(S.songs.map(s => s.id)); const del = new Set(S.songDel || []);
+  TEMPL.forEach(t => { if (!have.has(t.id) && !del.has(t.id)) S.songs.push(Object.assign({}, t)); });
   G.save();
 };
 G.screens.songs = function () {
-  const list = S.songs.map(s => { const r = parseBars(s.txt); return `<div class="song"><button class="sgo" data-a="go" data-s="song" data-p='${JSON.stringify({ id: s.id })}'><b>${esc(s.name)}</b><span class="muted">${r.bars.slice(0, 8).map(G.cnPlain).join(' ')}${r.bars.length > 8 ? ' …' : ''} · ${s.bpm} bpm${s.kapo ? ' · kapo ' + s.kapo : ''}</span></button><button class="btn sm ghost" data-a="go" data-s="songed" data-p='${JSON.stringify({ id: s.id })}' aria-label="düzenle">Düzenle</button></div>`; }).join('');
+  const row = s => { const r = parseBars(s.txt); return `<div class="song"><button class="sgo" data-a="go" data-s="song" data-p='${JSON.stringify({ id: s.id })}'><b>${esc(s.name.replace(/^(Şablon|Barış Manço) · /, ''))}</b><span class="muted">${r.bars.slice(0, 8).map(G.cnPlain).join(' ')}${r.bars.length > 8 ? ' …' : ''} · ${s.bpm} bpm${s.kapo ? ' · kapo ' + s.kapo : ''}</span></button><button class="btn sm ghost" data-a="go" data-s="songed" data-p='${JSON.stringify({ id: s.id })}' aria-label="düzenle">Düzenle</button></div>`; };
+  const mine = S.songs.filter(s => !s.ex && !s.bm), bm = S.songs.filter(s => s.bm), ex = S.songs.filter(s => s.ex);
+  const sec = (t, arr, d) => arr.length ? `<h2 class="sec">${t}</h2>${d ? `<p class="muted">${d}</p>` : ''}<div class="songs lvgrid">${arr.map(row).join('')}</div>` : '';
   return { t: 'Şarkılarım', cat: 'sarki', h: `<p class="muted">Çalmak istediğin şarkının akorlarını internetten bul, buraya yaz. Her akor bir ölçü; <code>Am*2</code> iki ölçü, <code>%</code> öncekini tekrarlar, <code>|</code> sadece okunurluk için.</p>
-<button class="btn" data-a="go" data-s="songed" data-p='{}'>+ Yeni şarkı</button><div class="songs">${list || '<p class="muted">Henüz şarkı yok.</p>'}</div>` };
+<button class="btn" data-a="go" data-s="songed" data-p='{}'>+ Yeni şarkı</button>
+${sec('Kendi şarkıların', mine)}${sec('Barış Manço', bm, 'Akor sırası akorculuk.com ve guitartabsexplorer.com’dan; ölçü süreleri yaklaşık. Kulağınla kontrol edip düzenleyebilirsin. Bazılarında kapo ile kolay şekiller kullanıldı.')}${sec('Sık kullanılan dizilimler', ex, 'Pop’un en yaygın akor kalıpları. Bir şarkının akorları bunlardan birine benziyorsa onu temel alıp düzenle.')}` };
 };
 G.screens.songed = function (p) {
   const s = S.songs.find(x => x.id === p.id) || { id: null, name: '', txt: '', pat: 'a3', bpm: 70, kapo: 0 };
@@ -302,10 +468,10 @@ G.actions.savesong = d => {
   else S.songs.unshift({ id: 'u' + Date.now(), name, txt, bpm, kapo, pat });
   G.save(); G.actions.back();
 };
-G.actions.delsong = d => { if (confirm('Şarkı silinsin mi?')) { S.songs = S.songs.filter(x => x.id !== d.id); G.save(); G.actions.back(); } };
+G.actions.delsong = d => { if (confirm('Şarkı silinsin mi?')) { S.songs = S.songs.filter(x => x.id !== d.id); (S.songDel = S.songDel || []).push(d.id); G.save(); G.actions.back(); } };
 G.screens.song = function (p) {
   const s = S.songs.find(x => x.id === p.id); const r = parseBars(s.txt); const P = patById(s.pat);
-  return { t: s.name, cat: 'sarki', h: `<div class="card">${playerHtml(r.bars, P, s.bpm, { kapo: s.kapo })}</div><div class="row g"><button class="btn sm ghost" data-a="go" data-s="songed" data-p='${JSON.stringify({ id: s.id })}'>Düzenle</button><span class="muted">Desen: ${esc(P.name)}</span></div>`,
+  return { t: s.name, cat: 'sarki', h: `${s.note ? `<p class="muted">${esc(s.note)}</p>` : ''}<div class="card">${playerHtml(r.bars, P, s.bpm, { kapo: s.kapo })}</div><div class="row g"><button class="btn sm ghost" data-a="go" data-s="songed" data-p='${JSON.stringify({ id: s.id })}'>Düzenle</button><span class="muted">Desen: ${esc(P.name)}</span></div>`,
     after: () => bindPlayer(r.bars, P, { get: () => s.bpm, set: v => { s.bpm = v; } }, s.kapo || 0) };
 };
 
@@ -337,7 +503,19 @@ G.actions.shape = d => {
 
 // ---------- oyunlar ----------
 const ROOTS = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B'];
+function slideQ() {
+  const sh = pick(['E', 'A']); const q = pick(['', 'm']);
+  const r1 = pick(ROOTS); const a = G.slideChord(r1 + q, sh, null); if (a.fret === 0) return slideQ();
+  const d = pick([-3, -2, -1, 1, 2, 3, 5]); const b = G.slideChord(M.NICE[M.mod(M.pcOf(r1) + d, 12)] + q, sh, a.fret);
+  const dist = b.fret - a.fret; const lab = x => (x > 0 ? '+' : '') + x + ' perde';
+  const pool = [dist + 1, dist - 1, dist + 2, -dist, dist - 2].filter(x => x !== dist && x !== 0);
+  const opts = [dist]; pool.forEach(x => { if (opts.length < 4 && !opts.includes(x)) opts.push(x); });
+  const shName = sh === 'E' ? 'Mi' : 'La';
+  return { kind: 'choice', prompt: `${shName} şekliyle <b>${cn(a.n)}</b> (${fretTxt(a.fret)}) çalıyorsun. <b>${cn(b.n)}</b> için kaç perde kaydırırsın?`, cols: 2,
+    opts: shuffle(opts).map(v => ({ v: String(v), html: lab(v) })), ans: [String(dist)], why: `${cn(b.n)} ${shName} şekliyle ${fretTxt(b.fret)}: ${a.fret} → ${b.fret} = ${lab(dist)}. Kök ${sh === 'E' ? 6 : 5}. telde.` };
+}
 function barreGen() {
+  if (Math.random() < 0.4) return slideQ();
   const r = pick(ROOTS), q = pick(['', 'm']), sh = pick(['E', 'A']); const pc = M.pcOf(r);
   const n = CHM.barreFret(sh, pc); const set = new Set([n]);
   while (set.size < 4) set.add((((n + pick([-3, -2, -1, 1, 2, 3, 5, 7])) % 12) + 12) % 12);
