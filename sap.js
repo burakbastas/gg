@@ -52,10 +52,35 @@ function gridQ(pc) {
   return { kind: 'grid', key: 'n:' + pc, prompt: `Sapta tüm <b>${G.pcInline(pc)}</b> notalarını işaretle`, sub: `${ans.length} konum · satır 1 = ince Mi teli`, ans, why: '' };
 }
 function poolStr(strs, nat) { const r = []; strs.forEach(s => { for (let f = 0; f <= 12; f++) if (!nat || M.NAT.includes(pcAt(s, f))) r.push(s + ':' + f); }); return r; }
+// porte ↔ sap (klasik okuma): anahtar 'st:tel:perde'
+const posName = (s, f) => `${6 - s}. tel · ${f === 0 ? 'açık' : f + '. perde'}`;
+const midiAt = (s, f) => M.OPEN[s] + f;
+const staffOne = (s, f) => G.staffSvg([{ n: [{ s, f }], d: 1 }], { last: true, noact: true });
+function rangeOf(L) { return L && L.pos === 5 ? [5, 9] : [0, 4]; }
+function staffQ(s, f, key, L) {
+  const [lo, hi] = rangeOf(L), m = midiAt(s, f);
+  const all = []; for (let x = 0; x < 6; x++) for (let y = lo; y <= hi; y++) if (y >= 0 && midiAt(x, y) === m) all.push(x + ':' + y);
+  if (Math.random() < 0.5) {
+    const pool = []; for (let x = 0; x < 6; x++) for (let y = lo; y <= hi; y++) if (M.NAT.includes(midiAt(x, y) % 12) && Math.abs(midiAt(x, y) - m) <= 5 && midiAt(x, y) !== m) pool.push(x + ':' + y);
+    const opts = [s + ':' + f].concat(M.shuffle(pool).slice(0, 3));
+    return { kind: 'choice', key, prompt: `Bu nota ${lo ? lo + '.–' + hi + '. perde bölgesinde' : '1. pozisyonda (0–4. perde)'} nerede?`, visual: `<div class="stq">${staffOne(s, f)}</div>`, cols: 2,
+      opts: M.shuffle(opts).map(v => { const p = v.split(':').map(Number); return { v, html: posName(p[0], p[1]) }; }), ans: all,
+      why: `Bu nota ${G.nn(M.SHARP[m % 12])}: ${all.map(v => { const p = v.split(':').map(Number); return posName(p[0], p[1]); }).join(' veya ')}. Gitar notası bir oktav aşağıda duyulur (anahtarın altındaki 8).` };
+  }
+  const ms = [m]; const li = M.LET.indexOf(M.SHARP[m % 12][0]);
+  [-2, -1, 1, 2, 7, -7].forEach(st => { const L2 = M.LET[M.mod(li + st, 7)]; let x = m - (m % 12) + M.LPC[L2] + (st >= 7 ? 12 : st <= -7 ? -12 : 0); if (st > 0 && st < 7 && x <= m) x += 12; if (st < 0 && st > -7 && x >= m) x -= 12; if (x >= 40 && x <= 84 && !ms.includes(x)) ms.push(x); });
+  const opts = [m].concat(M.shuffle(ms.slice(1)).slice(0, 3));
+  const svgOf = x => { for (let a = 0; a < 6; a++) { const b = x - M.OPEN[a]; if (b >= 0 && b <= 15) return staffOne(a, b); } return ''; };
+  return { kind: 'choice', key, prompt: `${posName(s, f)}: portede hangisi?`, visual: board({ dot: [s, f] }), cols: 2,
+    opts: M.shuffle(opts).map(x => ({ v: String(x), html: svgOf(x) })), ans: [String(m)],
+    why: `${posName(s, f)} = ${G.nn(M.SHARP[m % 12])}. Portede ${['alt ek çizgilerde', 'dizek altında', 'dizek içinde', 'dizek üstünde'][m < 52 ? 0 : m < 62 ? 1 : m < 79 ? 2 : 3]}.` };
+}
+function staffPool(L) { const [lo, hi] = rangeOf(L); const r = []; for (let s = 0; s < 6; s++) for (let f = lo; f <= hi; f++) if (M.NAT.includes(midiAt(s, f) % 12)) r.push('st:' + s + ':' + f); return r; }
 let lastKey = null;
 function fretGen(L) {
   const k = G.srsPick(L.keys(), lastKey); lastKey = k;
   if (L.mode === 'all') return gridQ(+k.slice(2));
+  if (L.mode === 'staff') { const p = k.split(':').map(Number); return staffQ(p[1], p[2], k, L); }
   const p = k.split(':').map(Number);
   return L.mode !== 'timed' && Math.random() < 0.4 ? fretQ(p[0], p[1], k) : nameQ(p[0], p[1], k, L);
 }
@@ -81,6 +106,10 @@ FLV.push({ id: 'f9', name: 'Notanın tüm yerleri · doğal', desc: 'Bir notanı
 FLV.push({ id: 'f10', name: 'Notanın tüm yerleri · ♯/♭ dahil', desc: '12 notanın hepsi', mode: 'all', count: 6, keys: () => [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(p => 'n:' + p) });
 FLV.push({ id: 'f11', name: 'Hız turu · 3 saniye', desc: 'Her soruya 3 saniye: hesaplamadan bilmeye geçiş', mode: 'timed', acc: true, keys: () => poolStr(ALL6, false),
   lesson: '<p>Hedef: düşünmeden bilmek. 3 saniye sınır var, hesaplamaya vakit kalmaz. Burada takılırsan önceki seviyelere geri dönmek normaldir.</p>' });
+FLV.push({ id: 'f12', name: 'Porte ↔ sap · 1. pozisyon', desc: 'Notayı portede gör, sapta bul (0–4. perde); tersini de', mode: 'staff', keys: () => staffPool({}),
+  lesson: '<p>Klasik gitar notası sol anahtarında yazılır ama <b>bir oktav aşağıda</b> duyulur (anahtarın altındaki küçük 8). Birinci pozisyonda (0–4. perde) her doğal notanın neredeyse tek bir yeri vardır.</p><p class="kal">Dizekteki çizgiler: Mi Sol Si Re Fa · aralar: Fa La Do Mi</p><p>Çapalar: dizeğin en alt çizgisi 4. tel 2. perde Mi; üçüncü çizgi açık Si (2. tel); en üst çizgi 1. tel 1. perde Fa. Alt ek çizgilerdeki notalar kalın tellerdedir: üç ek çizgi altı = açık 6. tel Mi.</p><p>Si notası hem 3. tel 4. perde hem açık 2. teldir; ikisi de doğru sayılır.</p>' });
+FLV.push({ id: 'f13', name: 'Porte ↔ sap · 5.–9. perde', desc: 'V. pozisyon: aynı notanın ikinci yeri', mode: 'staff', pos: 5, keys: () => staffPool({ pos: 5 }),
+  lesson: '<p>Klasik repertuvar ve Giuliani’nin ileri formülleri V. pozisyonu kullanır. Burada notalar 1. pozisyondakinin bir ince telde 5 perde ilerisindedir (Sol–Si arası 4).</p><p>Örnek: açık 1. tel Mi = 2. tel 5. perde; açık 2. tel Si = 3. tel 4. perde = 4. tel 9. perde.</p>' });
 FLV.forEach(L => { L.gen = () => fretGen(L); });
 G.FLV = FLV;
 
@@ -105,6 +134,7 @@ G.actions.review = () => {
       const cur = G.dueList();
       const k = cur.length ? pick(cur) : pick(Object.keys(S.srs));
       if (k.startsWith('n:')) return gridQ(+k.slice(2));
+      if (k.startsWith('st:')) { const q = k.split(':').map(Number); return staffQ(q[1], q[2], k, q[2] >= 5 ? { pos: 5 } : {}); }
       const p = k.split(':').map(Number);
       return Math.random() < 0.4 ? fretQ(p[0], p[1], k) : nameQ(p[0], p[1], k, { acc: true });
     } });

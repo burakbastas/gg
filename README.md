@@ -36,5 +36,6 @@ Güncellemede dosyaları yeniden yüklemen yeterli. Eski sürümden gelen ilerle
 ## Kaynaklar ve lisanslar
 
 - Armoni dersleri, şu açık lisanslı kitaplardan yararlanılarak Türkçe ve gitara uyarlanarak yazıldı: [Open Music Theory](https://viva.pressbooks.pub/openmusictheory/) (CC BY-SA 4.0), Robert Hutchinson, [Music Theory for the 21st-Century Classroom](https://musictheory.pugetsound.edu/mt21c/) (GNU FDL), Andre Mount, [Fundamentals, Function, and Form](https://milneopentextbooks.org/fundamentals-function-and-form/) (CC BY 4.0).
+- Naylon gitar örnek sesleri: quartertone, Freesound paket 11573, [tonejs-instruments](https://github.com/nbrosowsky/tonejs-instruments) derlemesi üzerinden, [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). Ayrıntı: `snd/KAYNAK.txt`.
 - Simgelerin çoğu [Lucide](https://lucide.dev) (ISC lisansı).
 - Delcamp ve Giuliani parçalarının notaları uygulamaya kopyalanmadı; ücretsiz PDF’lere bağlantı verilir.

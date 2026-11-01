@@ -42,7 +42,7 @@ G.buildKulak = function () {
   const MAKS = ['rast', 'huseyni', 'buselik', 'kurdi', 'nihavent', 'hicaz', 'humayun'];
   function makQ() {
     const id = pick(MAKS); const mk = G.MAK.find(m => m.id === id); const k = pick(['A', 'E', 'D']);
-    const sc = G.mScale(mk, k); let base = 52 + M.pcOf(k); if (base > 59) base -= 12;
+    const sc = G.mScale(mk, k); let base = 52 + M.mod(M.pcOf(k) - 4, 12); if (base > 59) base -= 12;
     let prev = base; const mids = sc.map((n, i) => { if (!i) return base; let m = prev - (prev % 12) + M.pcOf(n); while (m <= prev) m += 12; prev = m; return m; }).concat([base + 12]);
     return q('Bu dizi hangi makama yakın? <span class="muted">(gitardaki yaklaşığı)</span>', mk.name, MAKS.map(id => G.MAK.find(m => m.id === id).name), () => { const e = Aud.seq(mids, null, 0.3, 0.55, 0.35); Aud.seq(mids.slice().reverse().slice(1), e, 0.3, 0.5, 0.35); },
       `${mk.name}: ${sc.map(G.nn).join(' ')} (${mk.west}).`, 4, 2);

@@ -134,14 +134,33 @@ G.kulakExtra = function () {
     return q('Bu dizilim majör tonda mı, minör tonda mı?', minor ? 'Minör ton' : 'Majör ton', ['Majör ton', 'Minör ton'], () => { let t = Aud.now() + 0.05; cad(ch, prog, t, 0.85); },
       `${minor ? 'Minör' : 'Majör'}: ${prog.map(i => G.cn(ch[i])).join(' – ')}. İlk ve son akorun rengine odaklan.`, 2, 2);
   }
+  // fonksiyonel dinleme: önce tonu kur (I–IV–V–I), sonra tek nota → derece
+  const DEGF = ['1 · ev, tam dinlenme', '2 · hareketli, 1’e ya da 3’e kayar', '3 · sıcak, dengeli', '4 · gergin, 3’e iner', '5 · sağlam, açık', '6 · yumuşak, hüzünlü', '7 · keskin, 1’e çeker'];
+  function k13() {
+    const n = (G.S.lv.k13 || { hist: [] }).hist.length; const pool = n < 6 ? [0, 2, 4] : n < 14 ? [0, 2, 4, 1, 6] : [0, 1, 2, 3, 4, 5, 6];
+    const k = pick(KEYS); const ch = M.diatonic(k, 'maj'); const d = pick(pool); const base = 60 + M.pcOf(k) - (M.pcOf(k) > 5 ? 12 : 0);
+    const R = pool.map(x => String(x + 1));
+    return q('Kadanstan sonra çalınan nota tonun kaçıncı derecesi?', String(d + 1), R, () => { let t = Aud.now() + 0.05; t = cad(ch, [0, 3, 4, 0], t, 0.6); t += 0.45; Aud.pluck(base + M.MAJ[d], t, 0.7, 1.4); },
+      `Derece ${DEGF[d]} (${G.nn(M.scale(k, 'maj')[d])}, ${G.nn(k)} majörde). Notayı kafanda ev notasına doğru götür: kaç adımda varıyorsun?`, pool.length > 4 ? 4 : 3, pool.length > 4 ? 7 : 3);
+  }
+  function k14() {
+    const k = pick(KEYS); const ch = M.diatonic(k, 'maj'); const sc = M.scale(k, 'maj'); const base = 60 + M.pcOf(k) - (M.pcOf(k) > 5 ? 12 : 0);
+    const st = pick([0, 2, 4]); const mel = [st]; for (let i = 0; i < 3; i++) { const p = mel[mel.length - 1] + pick([-1, 1, -2, 2]); mel.push(Math.max(0, Math.min(6, p))); }
+    const lab = a => a.map(x => x + 1).join('–'); const corr = lab(mel); const pool = [corr];
+    while (pool.length < 4) { const v = mel.slice(); const j = 1 + rnd(3); v[j] = Math.max(0, Math.min(6, v[j] + pick([-1, 1]))); const l = lab(v); if (!pool.includes(l)) pool.push(l); }
+    return q('Dört notalık melodi hangi derecelerden oluşuyor?', corr, pool, () => { let t = Aud.now() + 0.05; t = cad(ch, [0, 3, 4, 0], t, 0.55); t += 0.45; mel.forEach(x => { Aud.pluck(base + M.MAJ[x], t, 0.65, 0.6); t += 0.6; }); },
+      `Melodi: ${mel.map(x => G.nn(sc[x])).join(' ')} = ${corr}. İlk notayı tonik çekimine göre bul, sonra her adımı “bir yukarı, bir aşağı” diye izle.`, 1, 4);
+  }
   const L = {
+    k13: '<p><b>Fonksiyonel dinleme:</b> notayı tek başına değil, tondaki görevine göre tanırsın. Önce I–IV–V–I kadansı tonu kurar, sonra tek bir nota çalınır.</p><p>Her derecenin kendi hissi vardır: 1 ev, 3 sıcak, 5 sağlam; 7 eve doğru çeker, 4 aşağı 3’e iner. Önce 1-3-5 ile başlarsın; doğru yaptıkça 2, 7 ve sonra tüm dereceler eklenir.</p><p>Bu yöntem Functional Ear Trainer gibi uygulamaların temelidir ve kulaktan şarkı çıkarmanın en hızlı yoludur.</p>',
+    k14: '<p>Kadanstan sonra dört notalık kısa bir melodi gelir. İlk notayı derece olarak bul, sonraki notaları adım adım izle. Bu, bir şarkının melodisini çıkarıp akor yazmanın (Melodiye akor seviyesi) ön adımıdır.</p>',
     k8: '<p>Kulaktan eşliğin ilk adımı: <b>evi bulmak</b>. Bir dizilim çalınır, ardından üç nota. Hangisinde “bitti, dinlendim” hissi varsa o tonik. Şarkılarda da nakaratın bittiği notayı dinle.</p>',
     k9: '<p>Akorun kökü çoğu zaman bastadır. Ton kadansından sonra tek bir bas notası çalınır: 1 (ev), 4 (açılma), 5 (gerilim), 6 (hüzünlü ev). Basın derecesini duyarsan akorun derecesini de bulmuş olursun.</p>',
     k10: '<p>Melodi akorun notalarından beslenir. Melodinin vurgulu notalarını içeren akor genelde doğru akordur. I: 1-3-5, IV: 4-6-1, V: 5-7-2, vi: 6-1-3 dereceleri. Asistandaki “nota → akor” bölümü bu işin pratiğidir.</p>',
     k11: '<p>Akorun ne zaman değiştiğini duymak, şarkıyı takip etmenin temeli. Her ölçüde dört vuruş çalınır; bas notası değiştiğinde akor değişmiştir.</p>',
     k12: '<p>Şarkının majör mü minör mü olduğunu ilk saniyelerde anlamak, palette hangi akorlara bakacağını belirler. Minörde i, iv, V (majör) ve ♭VI, ♭VII sık.</p>'
   };
-  return [['k8', 'Ton merkezi', 'Dizilimden sonra ev notasını bul', k8], ['k9', 'Bas hangi derece', '1, 4, 5, 6: basın tondaki yeri', k9], ['k10', 'Melodiye akor', 'Melodi parçasına uyan akoru seç', k10], ['k11', 'Akor değişimini duy', '4 ölçüde kaç değişim', k11], ['k12', 'Majör mü minör ton', 'Dizilimin tonu', k12]]
+  return [['k8', 'Ton merkezi', 'Dizilimden sonra ev notasını bul', k8], ['k9', 'Bas hangi derece', '1, 4, 5, 6: basın tondaki yeri', k9], ['k10', 'Melodiye akor', 'Melodi parçasına uyan akoru seç', k10], ['k11', 'Akor değişimini duy', '4 ölçüde kaç değişim', k11], ['k12', 'Majör mü minör ton', 'Dizilimin tonu', k12], ['k13', 'Notanın tondaki görevi', 'Kadans + tek nota: 1–7 dereceler', k13], ['k14', 'Kısa melodi dezesi', 'Dört notayı derece olarak yaz', k14]]
     .map(a => ({ id: a[0], name: a[1], desc: a[2], gen: a[3], lesson: L[a[0]], count: 10 }));
 };
 })();

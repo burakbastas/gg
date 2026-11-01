@@ -1,8 +1,9 @@
 (function () {
 'use strict';
 const G = window.G = { screens: {}, actions: {}, tracks: {}, ui: { tseg: 'armoni' } };
-G.VERSION = 11;
+G.VERSION = 12;
 G.CHANGES = [
+  [12, '1 Kasım 2026', 'Gerçek naylon gitar sesi; tüm oynatıcılarda sayarak başlama, ±1/±5 tempo ve ölçü döngüsü; 1 dakika geçiş testi; kulakta “notanın tondaki görevi” ve melodi dezesi; klavyede porte ↔ sap; şarkılarda kendi ses dosyanla yavaşlatma ve A–B döngüsü, basitleştirme, sahne görünümü; makamda karar drone’u ve seyir örneği; repertuvarda tempo hedefi ve kendini kaydetme, sıradaki Giuliani formülleri; kısa gün planı.'],
   [11, '1 Kasım 2026', 'Yeni logo ve simgeler; ekranın kenarından kaydırarak geri/ileri (iPhone/iPad ana ekran uygulamasında) ve tarayıcı geri tuşu desteği; telefonda taşan alanlar ve yakınlaştırma sorunu düzeltildi, notalar ekrana sığacak şekilde satırlara bölünüyor; “Kaldığın yerden devam”; armoni dersleri yeniden yazıldı (yarım ses, pop şemaları, modal renkler, karışık tekrar seviyeleri, kendini dene, açık lisanslı kaynaklar).'],
   [10, '1 Kasım 2026', 'Telefon ve tablette ses düzeltmesi (iPhone sessiz düğmesi ve ses kilidi); Ayarlar’a ses testi.'],
   [9, '1 Kasım 2026', 'Arpej oynatıcıda sıradaki akorun hangi tellerden çalınacağı gösteriliyor.'],
@@ -19,7 +20,7 @@ const $ = s => document.querySelector(s);
 const pick = M.pick;
 
 // ---------- durum ----------
-function defState() { return { v: 2, set: { nt: 'both', theme: 'auto', dg: 'h' }, srs: {}, lv: {}, xp: 0, days: {}, pairs: {}, min1: {}, arp: { p: 0, pat: 0, bpm: 70, snd: 'arp' }, songs: null, pats: [], progs: [], seen: {}, flow: {}, slide: { best: {} }, giu: {}, ex: {}, exo: {}, yol: {} }; }
+function defState() { return { v: 2, set: { nt: 'both', theme: 'auto', dg: 'h', tone: 'smp' }, srs: {}, lv: {}, xp: 0, days: {}, pairs: {}, min1: {}, arp: { p: 0, pat: 0, bpm: 70, snd: 'arp' }, songs: null, pats: [], progs: [], seen: {}, flow: {}, slide: { best: {} }, giu: {}, ex: {}, exo: {}, yol: {} }; }
 function migrate(s) {
   const d = defState(); if (!s || typeof s !== 'object') return d;
   for (const k in d) if (s[k] === undefined) s[k] = d[k];
@@ -61,7 +62,9 @@ G.pcInline = pc => M.NAT.includes(pc) ? G.nn(M.SHARP[pc]) : `${G.nn(M.SHARP[pc])
 const CAT = { sap: 'away', teori: 'away', kulak: 'away', makam: 'away', sekil: 'away', gecis: 'guitar', arpej: 'guitar', sarki: 'guitar', akor: 'guitar', klasik: 'guitar' };
 let cat = null, lastTouch = Date.now(); G.playing = false;
 ['pointerdown', 'keydown', 'touchstart'].forEach(e => addEventListener(e, () => { lastTouch = Date.now(); }, { passive: true }));
-function updTimer() { const d = today(); const el = $('#tmr'); if (el) el.textContent = `${Math.floor((d.away + d.guitar) / 60)}/60 dk`; }
+const isShort = () => !!(S.short && S.short[dayKey()]);
+const goalMin = () => isShort() ? 10 : 60;
+function updTimer() { const d = today(); const el = $('#tmr'); if (el) el.textContent = `${Math.floor((d.away + d.guitar) / 60)}/${goalMin()} dk`; }
 setInterval(() => {
   if (!cat || document.hidden) return;
   if (Date.now() - lastTouch > (G.playing ? 600000 : 60000)) return;
@@ -104,6 +107,7 @@ const snap = () => stack.map(x => ({ name: x.name, p: x.p }));
 function hPush() { seq++; SNAP[seq] = snap(); curI = seq; qEntry = false; try { history.pushState({ gg: seq }, ''); } catch (e) {} }
 function hRepl() { SNAP[curI] = snap(); try { history.replaceState({ gg: curI }, ''); } catch (e) {} }
 G.onStop = fn => stopFns.push(fn);
+G.ci = secFn => ({ countIn: () => S.set.ci === false ? null : { n: 4, sec: secFn } });
 function stopAll() { stopFns.forEach(f => { try { f(); } catch (e) {} }); stopFns = []; G.playing = false; }
 G.endSession = () => { if (SES) { clearTimeout(SES.timer); clearTimeout(SES.adv); } SES = null; document.body.classList.remove('in-q'); };
 function render(name, p) {
@@ -117,9 +121,22 @@ function render(name, p) {
   const root = stack[0].name;
   document.querySelectorAll('[data-a=tab]').forEach(b => { b.classList.toggle('on', b.dataset.t === root); if (b.closest('#nav')) b.setAttribute('aria-current', b.dataset.t === root ? 'page' : 'false'); });
   if (sc.after) sc.after();
+  enhance();
   updTimer();
   if (stack.length > 1 || !['home', 'ayar'].includes(root)) { S.last = { st: snap(), t: sc.t || '' }; G.save(); }
 }
+// ortak oynatıcı denetimleri: her tempo kaydırıcısına ±1/±5 ve sayarak başlama düğmesi
+function enhance() {
+  document.querySelectorAll('#app input[type=range][aria-label=tempo]').forEach(r => {
+    if (r.dataset.enh) return; r.dataset.enh = 1;
+    const d = document.createElement('div'); d.className = 'tstep';
+    d.innerHTML = ['-5', '-1', '+1', '+5'].map(v => `<button class="btn sm ghost" data-a="bstep" data-d="${v}" aria-label="tempo ${v}">${v.replace('-', '−')}</button>`).join('') + `<button class="btn sm ${S.set.ci === false ? 'ghost' : 'on'} citog" data-a="citog" aria-pressed="${S.set.ci !== false}">Sayarak başla</button>`;
+    r.insertAdjacentElement('afterend', d);
+  });
+}
+G.enhance = enhance;
+G.actions.bstep = (d, el) => { const r = el.parentElement.previousElementSibling; if (!r) return; r.value = Math.max(+r.min, Math.min(+r.max, +r.value + +d.d)); r.dispatchEvent(new Event('input', { bubbles: true })); r.dispatchEvent(new Event('change', { bubbles: true })); };
+G.actions.citog = () => { S.set.ci = S.set.ci === false; G.save(); document.querySelectorAll('.citog').forEach(b => { b.classList.toggle('on', S.set.ci); b.classList.toggle('ghost', !S.set.ci); b.setAttribute('aria-pressed', S.set.ci); }); };
 G.actions.resume = () => { const l = S.last; if (!l || !l.st || !l.st.length) return; try { stack = l.st.map(x => ({ name: x.name, p: x.p })); hPush(); const t = stack[stack.length - 1]; render(t.name, t.p); window.scrollTo(0, 0); } catch (e) { G.goTab('home'); } };
 G.go = function (name, p, push) {
   if (push !== false) { stack.push({ name, p }); if (qEntry) { qEntry = false; hRepl(); } else hPush(); }
@@ -129,7 +146,7 @@ G.rerender = () => { const t = stack[stack.length - 1]; const y = window.scrollY
 G.replace = (name, p) => { stack[stack.length - 1] = { name, p }; hRepl(); render(name, p); window.scrollTo(0, 0); };
 G.goTab = (tab, sub, p) => { stack = [{ name: tab, p: {} }]; if (sub) { hPush(); G.go(sub, p || {}); } else { hPush(); render(tab, {}); window.scrollTo(0, 0); } };
 G.modal = html => { const m = $('#modal'); m.innerHTML = `<div class="box" role="dialog" aria-modal="true">${html}<button class="btn ghost full" style="margin-top:14px" data-a="mclose">Kapat</button></div>`; m.hidden = false; };
-G.actions.mclose = () => { $('#modal').hidden = true; $('#modal').innerHTML = ''; };
+G.actions.mclose = () => { if (G._recStop) G._recStop(); $('#modal').hidden = true; $('#modal').innerHTML = ''; if (G._modalDirty) { G._modalDirty = false; G.rerender(); } };
 G.actions.tab = d => { if (stack.length === 1 && stack[0].name === d.t && !SES) { window.scrollTo({ top: 0, behavior: 'smooth' }); return; } G.goTab(d.t); };
 G.actions.back = () => { if (stack.length > 1 || SES) history.back(); };
 G.actions.go = d => G.go(d.s, d.p ? JSON.parse(d.p) : {});
@@ -348,9 +365,12 @@ function onKey(e) {
 
 // ---------- günlük plan ----------
 const ROT = [['makam', 'Makamlar'], ['kulak', 'Kulak'], ['sekil', 'Akor şekilleri']];
-G.plan = () => { const r = ROT[Math.floor(Date.now() / 864e5) % 3]; return [
+G.plan = () => { const r = ROT[Math.floor(Date.now() / 864e5) % 3];
+  if (isShort()) return [{ k: 'sap', n: 'Klavye tekrarı', m: 3 }, { k: 'teori', n: 'Armoni: bir tur', m: 3 }, { k: 'gecis', n: 'Akor geçişi (1 dakika testi dahil)', m: 4, g: 1 }];
+  return [
   { k: 'sap', n: 'Klavye haritası', m: 8 }, { k: 'teori', n: 'Armoni teorisi', m: 10 }, { k: r[0], n: r[1], m: 7 },
   { k: 'gecis', n: 'Akor geçişleri', m: 8, g: 1 }, (Math.floor(Date.now() / 864e5) % 2 ? { k: 'klasik', n: 'Klasik: Giuliani ve teknik', m: 15, g: 1 } : { k: 'arpej', n: 'Arpej ve ritim', m: 15, g: 1 }), { k: 'sarki', n: 'Kulaktan şarkı çıkarma', m: 12, g: 1 }]; };
+G.actions.short = () => { S.short = S.short || {}; const k = dayKey(); if (S.short[k]) delete S.short[k]; else S.short[k] = 1; Object.keys(S.short).forEach(x => { if (x < dayKey(new Date(Date.now() - 30 * 864e5))) delete S.short[x]; }); G.save(); G.rerender(); };
 G.actions.plan = d => {
   const k = d.k, nx = t => G.nextOf(G.tracks[t]);
   if (k === 'sap') { if (G.dueCount()) return G.actions.review(); const L = nx('sap'); return L ? G.actions.lv({ id: L.id }) : G.goTab('sap'); }
@@ -390,10 +410,10 @@ G.screens.home = function () {
   const TR = [['sap', 'Klavye'], ['teori', 'Armoni'], ['makam', 'Makam'], ['kulak', 'Kulak'], ['sekil', 'Akor şekli']];
   const prog = TR.map(t => { const a = G.tracks[t[0]], p = G.passed(a); return `<div class="tp"><span>${t[1]}</span><div class="bar2 thin"><i style="width:${p / a.length * 100}%"></i></div><em>${p}/${a.length}</em></div>`; }).join('');
   const due = G.dueCount();
-  return { t: 'Gitar Gelişim', h: `<section class="hero"><div class="hs"><div class="hv">${streak()}</div><div class="hl">gün seri</div></div><div class="hs"><div class="hv">${tot}<small>/60</small></div><div class="hl">bugün (dk)</div></div><div class="hs"><div class="hv">${S.xp}</div><div class="hl">XP</div></div></section>
+  return { t: 'Gitar Gelişim', h: `<section class="hero"><div class="hs"><div class="hv">${streak()}</div><div class="hl">gün seri</div></div><div class="hs"><div class="hv">${tot}<small>/${goalMin()}</small></div><div class="hl">bugün (dk)</div></div><div class="hs"><div class="hv">${S.xp}</div><div class="hl">XP</div></div></section>
 ${S.last && S.last.t && S.last.t !== 'Gitar Gelişim' ? `<button class="resume" data-a="resume"><span class="muted">Kaldığın yerden devam</span><b>${S.last.t}</b><span class="ra">›</span></button>` : ''}
 ${due ? `<button class="banner" data-a="review"><b>Tekrar zamanı:</b> ${due} klavye notası seni bekliyor <span>›</span></button>` : ''}
-<div class="two"><div class="card"><h3>Bugünün planı</h3><div class="muted" style="margin-bottom:8px">Gitarsız 25 dk · gitarla 35 dk</div><div class="ptag">Gitar elinde değilken</div>${items.slice(0, 3).join('')}<div class="ptag">Gitar elindeyken</div>${items.slice(3).join('')}</div>
+<div class="two"><div class="card"><div class="row"><h3>Bugünün planı</h3><button class="btn sm ${isShort() ? 'on' : 'ghost'}" data-a="short" aria-pressed="${isShort()}">Kısa gün · 10 dk</button></div><div class="muted" style="margin-bottom:8px">${isShort() ? 'Yoğun günler için: 6 dk gitarsız, 4 dk gitarla. Seri bozulmaz (seri için günde 10 dakika yeter).' : 'Gitarsız 25 dk · gitarla 35 dk'}</div>${isShort() ? `<div class="ptag">Gitar elinde değilken</div>${items.slice(0, 2).join('')}<div class="ptag">Gitar elindeyken</div>${items.slice(2).join('')}` : `<div class="ptag">Gitar elinde değilken</div>${items.slice(0, 3).join('')}<div class="ptag">Gitar elindeyken</div>${items.slice(3).join('')}`}</div>
 <div><div class="card"><h3>Son 7 gün</h3><div class="week">${week}</div></div><div class="card"><h3>Seviye ilerlemesi</h3>${prog}</div></div></div><p class="muted center" style="margin-top:8px"><button class="btn sm link" data-a="tab" data-t="ayar">Sürüm ${G.VERSION}</button></p>` };
 };
 G.screens.teori = function () {
@@ -420,12 +440,13 @@ G.screens.ayar = function () {
 <div><div class="card"><h3>Yedek</h3><div class="muted">İlerleme bu cihazın tarayıcısında saklanır. Tarayıcı verisi silinirse kaybolur; ara sıra yedek al. Yedeği başka cihaza yükleyerek ilerlemeni taşıyabilirsin.</div><div class="row g"><button class="btn sm" data-a="exp">Yedeği indir</button><button class="btn sm ghost" data-a="imp">Yedeği yükle</button><input type="file" id="impf" accept=".json,application/json" hidden></div><div class="row g"><button class="btn sm danger" data-a="reset">Her şeyi sıfırla</button></div></div>
 <div class="card"><h3>Telefona kurma</h3><div class="muted">GitHub Pages adresini telefonda aç. iPhone: Paylaş → Ana Ekrana Ekle. Android: menü (⋮) → Ana ekrana ekle / Uygulamayı yükle. Sonra internetsiz de çalışır.</div></div>
 <div class="card"><h3>Sürüm ${G.VERSION}</h3><div class="muted">${G.CHANGES[0][1]}</div><details class="leg"><summary>Değişiklikler</summary>${G.CHANGES.map(c => `<p class="muted"><b>${c[0]}.</b> ${c[2]}</p>`).join('')}</details></div>
-<div class="card"><h3>Ses</h3><div class="muted">Ses gelmiyorsa buradan dene. iPhone’da yan taraftaki sessiz düğmesi kapalıyken de çalması için ayarlandı; yine de gelmezse sesi aç ve ekranı bir kez yenile.</div><div class="row g"><button class="btn sm" data-a="sndtest">▶ Sesi test et</button><span class="muted" id="sndst"></span></div></div>
+<div class="card"><h3>Ses</h3><div class="muted">Ses gelmiyorsa buradan dene. iPhone’da yan taraftaki sessiz düğmesi kapalıyken de çalması için ayarlandı; yine de gelmezse sesi aç ve ekranı bir kez yenile.</div><div class="muted" style="margin-top:8px">Gitar sesi</div><div class="seg">${b('settone', 'smp', S.set.tone, 'Naylon gitar (kayıt)')}${b('settone', 'syn', S.set.tone, 'Sentez (hafif)')}</div><div class="row g"><button class="btn sm" data-a="sndtest">▶ Sesi test et</button><span class="muted" id="sndst"></span></div><p class="muted" style="font-size:12px;margin-top:8px">Naylon gitar örnekleri: quartertone (Freesound), tonejs-instruments derlemesi, CC BY 3.0.</p></div>
 <div class="card"><h3>İpuçları</h3><div class="muted">Bilgisayarda soruları klavyeyle çözebilirsin: 1–9 seçenek, Enter devam, R sesi tekrar çalar. Ses gelmezse telefonun sessiz modunu kapat.</div></div></div></div>`,
     after: () => { const f = $('#impf'); if (f) f.onchange = () => { const r = new FileReader(); r.onload = () => { try { const j = JSON.parse(r.result); if (!j || !j.v || !j.set) throw 0; Object.keys(S).forEach(k => delete S[k]); Object.assign(S, migrate(j)); G.save(); alert('Yedek yüklendi.'); G.buildTracks(); applyTheme(); G.rerender(); } catch (e) { alert('Geçersiz yedek dosyası.'); } }; r.readAsText(f.files[0]); }; } };
 };
 G.actions.setnt = d => { S.set.nt = d.v; G.save(); G.buildTracks(); G.rerender(); };
-G.actions.sndtest = () => { Aud.unlock(); if (Aud.ctx) { Aud.strum([-1, 3, 2, 0, 1, 0]); setTimeout(() => { const e = document.querySelector('#sndst'); if (e) e.textContent = 'Ses motoru: ' + ({ running: 'çalışıyor', suspended: 'bekliyor (bir kez daha dokun)', interrupted: 'kesildi', closed: 'kapalı' }[Aud.ctx.state] || Aud.ctx.state); }, 300); } else { const e = document.querySelector('#sndst'); if (e) e.textContent = 'Bu tarayıcı Web Audio desteklemiyor.'; } };
+G.actions.sndtest = () => { Aud.unlock(); if (Aud.ctx) { Aud.strum([-1, 3, 2, 0, 1, 0]); setTimeout(() => { const e = document.querySelector('#sndst'); if (e) e.textContent = 'Ses motoru: ' + ({ running: 'çalışıyor', suspended: 'bekliyor (bir kez daha dokun)', interrupted: 'kesildi', closed: 'kapalı' }[Aud.ctx.state] || Aud.ctx.state) + (Aud.mode === 'smp' ? ' · naylon gitar: ' + ({ ready: 'hazır', loading: 'yükleniyor', failed: 'yüklenemedi, sentez kullanılıyor', none: '—' }[Aud.smpState]) : ''); }, 600); } else { const e = document.querySelector('#sndst'); if (e) e.textContent = 'Bu tarayıcı Web Audio desteklemiyor.'; } };
+G.actions.settone = d => { S.set.tone = d.v; Aud.mode = d.v; if (Aud.ctx && d.v === 'smp') Aud.loadSamples(); G.save(); G.rerender(); };
 G.actions.setdg = d => { S.set.dg = d.v; CHM.orient = d.v; G.save(); G.rerender(); };
 G.actions.settheme = d => { S.set.theme = d.v; G.save(); applyTheme(); G.rerender(); };
 G.actions.exp = () => { const b = new Blob([JSON.stringify(S)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'gitar-yedek-' + dayKey() + '.json'; document.body.appendChild(a); a.click(); a.remove(); };
@@ -440,7 +461,7 @@ G.buildTracks = function () {
   G.regTrack('sap', G.FLV);
 };
 G.boot = function () {
-  applyTheme(); CHM.orient = S.set.dg;
+  applyTheme(); CHM.orient = S.set.dg; Aud.mode = S.set.tone;
   if (window.matchMedia) { try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme); } catch (e) {} }
   G.buildTracks();
   if (G.initSongs) G.initSongs();

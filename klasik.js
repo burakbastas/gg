@@ -16,7 +16,7 @@ function tabSvg(cols, o) {
   cols.forEach((c, i) => {
     const x = X0 + i * CW + CW / 2;
     if (c.bar && i > 0) h += `<line x1="${x - CW / 2}" x2="${x - CW / 2}" y1="${ys(5)}" y2="${ys(0)}" class="tbar"/>`;
-    h += `<g class="tc" id="tc${(o.off || 0) + i}"><rect x="${x - CW / 2 + 1}" y="${Y0 - 22}" width="${CW - 2}" height="${5 * SY + 30}" rx="5" class="tcr"/>`;
+    h += `<g class="tc" ${o.noact ? '' : `id="tc${(o.off || 0) + i}" data-a="tloop" `}data-i="${(o.off || 0) + i}"><rect x="${x - CW / 2 + 1}" y="${Y0 - 22}" width="${CW - 2}" height="${5 * SY + 30}" rx="5" class="tcr"/>`;
     if (c.top) h += `<text x="${x}" y="${Y0 - 9}" text-anchor="middle" class="ttop">${c.top}</text>`;
     c.n.forEach(nt => { h += `<rect x="${x - 7}" y="${ys(nt.s) - 7}" width="14" height="14" class="tbg"/><text x="${x}" y="${ys(nt.s) + 4}" text-anchor="middle" class="tf">${nt.f}</text>`; });
     h += '</g>';
@@ -37,14 +37,16 @@ function startTab(cols, onSave) {
   G.playing = true; $('#tplay').textContent = '■ Durdur';
   const snd = () => S.arp.snd; let lap = 0;
   const cumBeat = []; let acc = 0; cols.forEach(c => { cumBeat.push(acc); acc += c.d; });
+  const ms = measures(cols);
   tplay = makeScheduler((i, t, api) => {
-    const k = i % cols.length; if (k === 0 && i > 0) { lap++; if (TP.ladder && lap % 2 === 0) { TP.bpm = Math.min(200, TP.bpm + 4); api.at(t, () => { const r = $('#tbpm'); if (r) { r.value = TP.bpm; $('#tbpmv').textContent = TP.bpm + ' bpm'; } }); } }
+    const R = TP.lp ? [ms[TP.lp[0]][0], ms[TP.lp[1]][1]] : [0, cols.length], len = R[1] - R[0];
+    const k = R[0] + i % len; if (i % len === 0 && i > 0) { lap++; if (TP.ladder && lap % 2 === 0) { TP.bpm = Math.min(200, TP.bpm + 4); api.at(t, () => { const r = $('#tbpm'); if (r) { r.value = TP.bpm; $('#tbpmv').textContent = TP.bpm + ' bpm'; } }); } }
     const c = cols[k]; const onBeat = Math.abs(cumBeat[k] - Math.round(cumBeat[k])) < 1e-6;
     if (snd() !== 'off' && onBeat && snd() === 'click') Aud.click(t, k === 0);
     if (snd() === 'arp') c.n.forEach((nt, j) => Aud.pluck(M.OPEN[nt.s] + nt.f, t + j * 0.006, c.n.length > 2 ? 0.34 : 0.5));
-    api.at(t, () => { const p = $('#tc' + (k === 0 ? cols.length - 1 : k - 1)); if (p) p.classList.remove('cur'); const e = $('#tc' + k); if (e) { e.classList.add('cur'); if (k % 8 === 0 || (cols[k].bar)) e.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' }); } });
+    api.at(t, () => { document.querySelectorAll('.tc.cur').forEach(p => p.classList.remove('cur')); const e = $('#tc' + k); if (e) { e.classList.add('cur'); if (k % 8 === 0 || (cols[k].bar)) e.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' }); } });
     return 60 / TP.bpm * c.d;
-  });
+  }, G.ci(() => 60 / TP.bpm));
   tplay.lad = TP.ladder ? { start: TP.bpm, save: top => { onSave(top); } } : null;
   tplay.start();
 }
@@ -56,6 +58,18 @@ function playerCard(id, best) {
 <p class="muted" id="tbest">${best ? `Rekorun: ${best} bpm` : 'Yavaş başla (40–60). Temiz çalınca “Temiz çaldım”a bas; hız merdiveni her 2 turda 4 bpm artırır.'}</p></div>`;
 }
 let CUR = null; // { cols, save(bpm) }
+function measures(cols) { const ms = []; let st = 0; cols.forEach((c, i) => { if (c.bar && i > 0) { ms.push([st, i]); st = i; } }); ms.push([st, cols.length]); return ms; }
+// ölçü döngüsü: bir notaya dokun → başlangıç ölçüsü, ikinciye → bitiş, üçüncü → kaldır
+G.actions.tloop = d => {
+  if (!CUR) return; const ms = measures(CUR.cols), j = +d.i, m = ms.findIndex(x => j >= x[0] && j < x[1]);
+  if (!TP.lp) { TP.lp = [m, m]; TP.lps = 1; } else if (TP.lps === 1) { TP.lp = [Math.min(TP.lp[0], m), Math.max(TP.lp[0], m)]; TP.lps = 2; } else { TP.lp = null; TP.lps = 0; }
+  drawLoop();
+};
+function drawLoop() {
+  const ms = CUR ? measures(CUR.cols) : []; const a = TP.lp ? ms[TP.lp[0]][0] : -1, b = TP.lp ? ms[TP.lp[1]][1] : -1;
+  document.querySelectorAll('.tc').forEach(e => { const i = +e.dataset.i; e.classList.toggle('lp', i >= a && i < b); });
+  const inf = $('#tlpi'); if (inf) inf.textContent = !TP.lp ? 'Döngü: bir ölçüye dokun, sonra bitiş ölçüsüne.' : TP.lps === 1 ? `Döngü: ${TP.lp[0] + 1}. ölçü · bitiş için başka bir ölçüye dokun` : `Döngü: ${TP.lp[0] + 1}–${TP.lp[1] + 1}. ölçüler · kaldırmak için bir notaya dokun`;
+}
 function bindTab() { const r = $('#tbpm'); if (r) r.oninput = () => { TP.bpm = +r.value; $('#tbpmv').textContent = TP.bpm + ' bpm'; }; G.onStop(() => stopTab(false)); }
 G.actions.tabplay = () => { if (CUR) startTab(CUR.cols, CUR.save); };
 G.actions.tablad = (d, el) => { TP.ladder = !TP.ladder; el.classList.toggle('on', TP.ladder); el.classList.toggle('ghost', !TP.ladder); el.textContent = 'Hız merdiveni: ' + (TP.ladder ? 'açık' : 'kapalı'); };
@@ -93,7 +107,7 @@ function staffSvg(cols, o) {
   info.forEach((I, i) => {
     const { x, c } = I;
     if (c.bar && i > 0) h += `<line x1="${x - CW / 2}" x2="${x - CW / 2}" y1="${TOP}" y2="${BOT}" class="sbar"/>`;
-    h += `<g class="tc" id="tc${(o.off || 0) + i}"><rect x="${x - CW / 2 + 1}" y="4" width="${CW - 2}" height="${H - 8}" rx="6" class="tcr"/>`;
+    h += `<g class="tc" ${o.noact ? '' : `id="tc${(o.off || 0) + i}" data-a="tloop" `}data-i="${(o.off || 0) + i}"><rect x="${x - CW / 2 + 1}" y="4" width="${CW - 2}" height="${H - 8}" rx="6" class="tcr"/>`;
     if (c.top) h += `<text x="${x}" y="16" text-anchor="middle" class="ttop">${c.top}</text>`;
     const head = (n, dx) => {
       let r = '';
@@ -144,7 +158,8 @@ function viewH(cols, o) {
   const v = S.set.view || 'nota'; o = o || {};
   const lines = v === 'tab' ? lineSplit(cols, 22, 36) : lineSplit(cols, 28, 76);
   const svgs = lines.map(([a, b], k) => { const sub = cols.slice(a, b); const oo = Object.assign({}, o, { off: a, last: k === lines.length - 1 }); return v === 'tab' ? tabSvg(sub, oo) : staffSvg(sub, oo); }).join('');
-  return `<div class="tabwrap${lines.length > 1 ? ' ml' : ''}">${svgs}</div><div class="seg sm vw"><button class="btn sm ${v === 'nota' ? 'on' : 'ghost'}" data-a="setview" data-v="nota">Nota görünümü</button><button class="btn sm ${v === 'tab' ? 'on' : 'ghost'}" data-a="setview" data-v="tab">Tab görünümü</button></div>`;
+  TP.lp = null; TP.lps = 0;
+  return `<div class="tabwrap${lines.length > 1 ? ' ml' : ''}">${svgs}</div><div class="muted lpinfo" id="tlpi">Döngü: bir ölçüye dokun, sonra bitiş ölçüsüne.</div><div class="seg sm vw"><button class="btn sm ${v === 'nota' ? 'on' : 'ghost'}" data-a="setview" data-v="nota">Nota görünümü</button><button class="btn sm ${v === 'tab' ? 'on' : 'ghost'}" data-a="setview" data-v="tab">Tab görünümü</button></div>`;
 }
 let lastW = innerWidth, rzT = 0;
 addEventListener('resize', () => { clearTimeout(rzT); rzT = setTimeout(() => { if (Math.abs(innerWidth - lastW) > 30 && document.querySelector('.tabwrap') && !(tplay && tplay.running)) { lastW = innerWidth; G.rerender(); } else lastW = innerWidth; }, 250); });
@@ -416,8 +431,12 @@ G.screens.grade = function (p) {
   const d = DG.find(x => x.g === p.g);
   const giuL = d.giu.map(lv => { const items = GD.filter(g => g[1] === lv); const dn = items.filter(g => S.giu[g[0]]).length; return `<button class="chipb" data-a="go" data-s="giu">${GLV[lv][0]} · ${dn}/${items.length}</button>`; }).join('');
   const exs = d.ex.map(id => `<button class="menu exm" data-a="go" data-s="ex" data-p='${JSON.stringify({ id })}'><span class="lvn">${EX[id].h === 'R' ? 'Sağ' : 'Sol'}</span><span><b>${EX[id].n}</b>${S.ex[id] ? `<span class="pill ok">rekor ${S.ex[id]} bpm</span>` : ''}</span></button>`).join('');
-  const rep = d.rep.map((r, i) => { const v = S.rep[rkey(d.g, i)] || 0; const U2 = repUrl(r); return `<div class="rep s${v}"><a href="${U2.u}" data-a="pdfopen" data-u="${encodeURIComponent(U2.u)}" data-t="${encodeURIComponent(r[1])}" data-own="${U2.own ? 1 : 0}"><b>${r[1]}</b><span class="muted">${r[0]} · ${U2.own ? 'nota' : 'seviye derlemesinde'}</span></a><button class="rs" data-a="repset" data-k="${rkey(d.g, i)}">${v ? RS[v] : 'başlamadım'}</button></div>`; }).join('');
-  return { t: `Delcamp ${d.g}. seviye`, cat: 'klasik', h: `<div class="card"><h3>${d.g}. seviye · ${d.t}</h3><div class="chips">${d.top.map(x => `<span class="chip">${x}</span>`).join('')}</div>${giuL ? `<div class="muted">Giuliani karşılığı:</div><div class="chips">${giuL}</div>` : ''}</div>
+  const rep = d.rep.map((r, i) => { const k = rkey(d.g, i), v = S.rep[k] || 0; const U2 = repUrl(r); const x = (S.repd || {})[k] || {}; const info = [x.cur ? `${x.cur}${x.goal ? '/' + x.goal : ''} bpm` : x.goal ? `hedef ${x.goal} bpm` : '', x.recs && x.recs.length ? `kayıt ${x.recs.at(-1).d.slice(8, 10)}.${x.recs.at(-1).d.slice(5, 7)}` : ''].filter(Boolean).join(' · ');
+    return `<div class="rep s${v}"><a href="${U2.u}" data-a="pdfopen" data-u="${encodeURIComponent(U2.u)}" data-t="${encodeURIComponent(r[1])}" data-own="${U2.own ? 1 : 0}"><b>${r[1]}</b><span class="muted">${r[0]}${info ? ' · <span class="rinf">' + info + '</span>' : ''}</span></a><button class="rs rd" data-a="repdet" data-k="${esc(k)}" data-t="${esc(r[1])}" aria-label="${esc(r[1])}: tempo ve kayıt">⋯</button><button class="rs" data-a="repset" data-k="${k}">${v ? RS[v] : 'başlamadım'}</button></div>`; }).join('');
+  // bu seviyenin Giuliani formüllerinden sıradaki 4 tanesi
+  const nextG = GD.filter(g => d.giu.includes(g[1]) && !S.giu[g[0]]).slice(0, 4);
+  const giuNext = d.giu.length ? (nextG.length ? `<div class="muted" style="margin-top:8px">Sıradaki Giuliani formülleri:</div><div class="chips">${nextG.map(g => `<button class="chipb" data-a="go" data-s="giud" data-p='${JSON.stringify({ no: g[0] })}'>No. ${g[0]}</button>`).join('')}</div>` : '<p class="muted">Bu seviyenin Giuliani formüllerini bitirdin.</p>') : '';
+  return { t: `Delcamp ${d.g}. seviye`, cat: 'klasik', h: `<div class="card"><h3>${d.g}. seviye · ${d.t}</h3><div class="chips">${d.top.map(x => `<span class="chip">${x}</span>`).join('')}</div>${giuL ? `<div class="muted">Giuliani karşılığı:</div><div class="chips">${giuL}</div>` : ''}${giuNext}</div>
 <h2 class="sec">Teknik alıştırmalar</h2><div class="menus">${exs}</div>
 <h2 class="sec">Repertuvar</h2><p class="muted">Parça adına dokun: notası uygulamanın içinde açılır. Sağdaki düğme durumunu değiştirir (başlamadım → çalışıyorum → öğrendim).</p><div class="reps">${rep}</div>` };
 };
@@ -433,5 +452,45 @@ ${p.own ? '' : '<p class="muted">Bu parça seviye derlemesinin içinde; görünt
 <p class="muted">Sayfa boş kalırsa diğer görüntüleyiciyi dene. Telefonda Google görüntüleyici daha güvenilir çalışır.</p>` };
 };
 G.actions.pdfm = d => { G.ui.pdfm = d.v; G.rerender(); };
+// ---------- repertuvar ayrıntısı: tempo hedefi ve kendini kaydetme ----------
+let REC = null;
+G._recStop = () => recStop();
+function repD(k) { S.repd = S.repd || {}; return S.repd[k] = S.repd[k] || { goal: 0, cur: 0, recs: [] }; }
+function recStop() { if (REC && REC.mr && REC.mr.state !== 'inactive') { try { REC.mr.stop(); } catch (e) {} } }
+async function recList(k) {
+  const el = $('#recl'); if (!el) return; const x = repD(k);
+  if (!x.recs.length) { el.innerHTML = '<p class="muted">Henüz kayıt yok. Kendini ara ara kaydetmek, ilerlemeyi duymanın en iyi yolu.</p>'; return; }
+  el.innerHTML = ''; for (const r of x.recs.slice().reverse()) {
+    let b = null; try { b = await G.IDB.get('rec:' + k + ':' + r.t); } catch (e) {}
+    const row = document.createElement('div'); row.className = 'recr';
+    row.innerHTML = `<span>${r.d.slice(8, 10)}.${r.d.slice(5, 7)}.${r.d.slice(0, 4)}${r.bpm ? ' · ' + r.bpm + ' bpm' : ''}</span>`;
+    if (b) { const a = document.createElement('audio'); a.controls = true; a.preload = 'none'; a.src = URL.createObjectURL(b); row.appendChild(a); } else row.insertAdjacentHTML('beforeend', '<span class="muted">dosya yok</span>');
+    el.appendChild(row);
+  }
+}
+G.actions.repdet = d => {
+  const k = d.k, x = repD(k);
+  G.modal(`<h3>${d.t}</h3><div class="two2"><label>Şu anki temiz tempo (bpm)<input id="rcur" type="number" inputmode="numeric" min="20" max="240" value="${x.cur || ''}"></label><label>Hedef tempo (bpm)<input id="rgoal" type="number" inputmode="numeric" min="20" max="240" value="${x.goal || ''}"></label></div>${x.goal && x.cur ? `<div class="bar2"><i style="width:${Math.min(100, x.cur / x.goal * 100)}%"></i></div><p class="muted">Hedefin %${Math.round(x.cur / x.goal * 100)}’indesin.</p>` : ''}
+<button class="btn sm" data-a="repsave" data-k="${esc(k)}">Tempoyu kaydet</button>
+<h3 style="margin-top:16px">Kendini kaydet</h3><p class="muted">Kayıtlar yalnızca bu cihazda saklanır; son 5 kayıt tutulur.</p><div class="row g"><button class="btn sm" id="recb" data-a="recgo" data-k="${esc(k)}">● Kaydı başlat</button><span class="muted" id="recs"></span></div><div id="recl"></div>`);
+  recList(k);
+};
+G.actions.repsave = d => { const x = repD(d.k); x.cur = Math.max(0, +$('#rcur').value || 0); x.goal = Math.max(0, +$('#rgoal').value || 0); G.save(); G.actions.mclose(); G.rerender(); };
+G.actions.recgo = async d => {
+  const k = d.k, b = $('#recb'), st = $('#recs');
+  if (REC && REC.mr && REC.mr.state === 'recording') { recStop(); return; }
+  if (!navigator.mediaDevices || !window.MediaRecorder) { st.textContent = 'Bu tarayıcı kayıt yapamıyor.'; return; }
+  let stream; try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } }); } catch (e) { st.textContent = 'Mikrofon izni verilmedi.'; return; }
+  const chunks = []; const mr = new MediaRecorder(stream); const t0 = Date.now(); REC = { mr };
+  mr.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+  mr.onstop = async () => {
+    stream.getTracks().forEach(t => t.stop()); clearInterval(REC && REC.iv);
+    const blob = new Blob(chunks, { type: mr.mimeType || 'audio/webm' }); const x = repD(k); const ts = Date.now();
+    try { await G.IDB.put('rec:' + k + ':' + ts, blob); x.recs.push({ t: ts, d: G.dayKey(), bpm: x.cur || 0 }); G._modalDirty = true; while (x.recs.length > 5) { const o = x.recs.shift(); try { await G.IDB.del('rec:' + k + ':' + o.t); } catch (e) {} } G.save(); } catch (e) { const s2 = $('#recs'); if (s2) s2.textContent = 'Kayıt saklanamadı.'; }
+    const bb = $('#recb'); if (bb) bb.textContent = '● Kaydı başlat'; const s3 = $('#recs'); if (s3) s3.textContent = 'Kaydedildi.'; REC = null; recList(k);
+  };
+  mr.start(); b.textContent = '■ Kaydı bitir';
+  REC.iv = setInterval(() => { const s = Math.floor((Date.now() - t0) / 1000); const e = $('#recs'); if (e) e.textContent = `kaydediliyor ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; if (s > 900) recStop(); }, 500);
+};
 G.actions.repset = d => { S.rep[d.k] = ((S.rep[d.k] || 0) + 1) % 3; G.save(); G.rerender(); };
 })();

@@ -1,0 +1,5 @@
+Naylon telli klasik gitar örnekleri:
+"classicalguitar-multisampled" — quartertone (Freesound paket 11573),
+tonejs-instruments derlemesi üzerinden (https://github.com/nbrosowsky/tonejs-instruments).
+Lisans: Creative Commons Attribution 3.0 (https://creativecommons.org/licenses/by/3.0/).
+Değişiklik: 3,2 saniyeye kısaltıldı, sonuna sönme eklendi, 80 kbps mono olarak yeniden kodlandı.

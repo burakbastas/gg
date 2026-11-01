@@ -151,6 +151,7 @@ G.screens.makamd = function (p) {
 ${row(up, 'Çıkış')}${changed ? row(dn, 'İniş') : ''}
 <p class="muted">${mk.downNote}</p><p class="muted">${mk.komaNote}</p>
 <div class="row g"><button class="btn sm" data-a="mscale" data-d="up">▶ Çıkış</button>${changed ? '<button class="btn sm ghost" data-a="mscale" data-d="down">▶ İniş</button>' : '<button class="btn sm ghost" data-a="mscale" data-d="updown">▶ Çık ve in</button>'}</div></div>
+<div class="card"><h3>Dinle ve eşlik et</h3><p class="muted">Karar drone’u sürekli çalar: üstüne diziyi kendin çal, kararın çekimini hisset. Seyir örneği, makamın tipik gidişini (karar → güçlü → tepe → karara iniş) kısa bir ezgiyle gösterir; gitarın 12 perdesiyle çalındığı için yaklaşık bir örnektir, gerçek icrayı bir kayıttan dinle.</p><div class="row g"><button class="btn sm ${DR ? 'on' : 'ghost'}" id="mdr" data-a="mdrone" aria-pressed="${!!DR}">${DR ? '■ Drone’u durdur' : '▶ Karar drone’u'}</button><button class="btn sm ghost" id="msy" data-a="mseyir">▶ Seyir örneği</button></div><div class="syr" id="syr"></div></div>
 <div class="card"><h3>Karakteristik hareket</h3><p><b>${G.cn(cadN)} → ${G.cn(mChord(mk, k, mk.ch[0]))}</b></p><p class="muted">${mk.cadNote}</p>
 <button class="btn sm ghost" data-a="mcad">▶ Dinle</button></div>
 </div>
@@ -163,9 +164,39 @@ G.actions.mkey = d => { MD.k = d.k; G.rerender(); };
 G.actions.mdir = d => { MD.dir = d.d; G.rerender(); };
 const curMk = () => MAK.find(m => m.id === MD.id);
 function scaleMidis(sc, k) {
-  let base = 52 + M.pcOf(k); if (base > 59) base -= 12; let prev = base;
+  let base = 52 + M.mod(M.pcOf(k) - 4, 12); if (base > 59) base -= 12; let prev = base;
   return sc.map((n, i) => { if (i === 0) return base; let m = prev - (prev % 12) + M.pcOf(n); while (m <= prev) m += 12; prev = m; return m; }).concat([base + 12]);
 }
+// ---------- drone ve seyir ----------
+let DR = null, SY = null;
+function droneStop() { if (DR) { clearInterval(DR.t); DR = null; } const b = document.getElementById('mdr'); if (b) { b.textContent = '▶ Karar drone’u'; b.classList.remove('on'); b.classList.add('ghost'); } }
+G.actions.mdrone = () => {
+  if (DR) { droneStop(); return; } if (!Aud.init()) return;
+  const k = MD.k; let base = 40 + M.mod(M.pcOf(k) - 4, 12); // 6. tel bölgesinde karar
+  const hit = () => { const t = Aud.now() + 0.03; Aud.pluck(base, t, 0.42); Aud.pluck(base + 12, t + 0.02, 0.2); Aud.pluck(base + 7, t + 0.8, 0.16); };
+  hit(); DR = { t: setInterval(hit, 1600) };
+  const b = document.getElementById('mdr'); if (b) { b.textContent = '■ Drone’u durdur'; b.classList.add('on'); b.classList.remove('ghost'); }
+  G.onStop(droneStop);
+};
+function seyirMidis(mk, k) {
+  const up = scaleMidis(mScale(mk, k), k), dn = scaleMidis(mScale(mk, k, 'down'), k);
+  const g = mk.gu, U = i => up.at(Math.min(i, up.length - 1)), D = i => dn.at(Math.min(i, dn.length - 1)), oct = up.at(0) + 12;
+  // 1) kararda dolaşıp güçlüye çık, 2) güçlü çevresinde dolaş, 3) tepeye (oktav) uzan, 4) iniş dizisiyle karara dön
+  const ph = [
+    [0, 1, 0, 1, 2].map(U).concat([...Array(Math.max(0, g - 2))].map((_, i) => U(i + 2)), [U(g), U(g)]),
+    [U(g + 1), U(g), U(g - 1), U(g), U(g + 1), U(g + 2) || oct, U(g + 1), U(g), U(g)],
+    [U(g + 1), U(g + 2), oct, oct, U(g + 2), U(g + 1), U(g)],
+    [...Array(g + 1)].map((_, i) => D(g - i)).concat([D(1), D(0), D(0)])
+  ];
+  return ph;
+}
+G.actions.mseyir = () => {
+  if (!Aud.init()) return; const mk = curMk(), k = MD.k; const ph = seyirMidis(mk, k);
+  let t = Aud.now() + 0.08; const el = document.getElementById('syr');
+  const sp = {}; mScale(mk, k).concat(mScale(mk, k, 'down')).forEach(n => { sp[M.pcOf(n)] = sp[M.pcOf(n)] || n; }); const nm = m => G.nnPlain(sp[m % 12] || M.SHARP[m % 12]);
+  if (el) el.innerHTML = ph.map((p, i) => `<div><span>${['Karar → güçlü', 'Güçlü çevresi', 'Tepe', 'Karara iniş'][i]}</span>${p.map(m => `<i>${nm(m)}</i>`).join(' ')}</div>`).join('');
+  ph.forEach((p, i) => { p.forEach((m, j) => { const last = j === p.length - 1; Aud.pluck(m, t, 0.55, last ? 0.9 : 0.36); t += last ? 0.9 : 0.36; }); t += 0.25; });
+};
 G.actions.mscale = d => {
   if (!Aud.init()) return; const mk = curMk(); const k = MD.k;
   const up = scaleMidis(mScale(mk, k), k), dn = scaleMidis(mScale(mk, k, 'down'), k).reverse();

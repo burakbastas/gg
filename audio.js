@@ -1,7 +1,10 @@
 (function (g) {
 'use strict';
+// naylon gitar örnekleri (snd/KAYNAK.txt): MIDI numarasıyla
+const SMP = { 40: 'E2', 44: 'Gs2', 47: 'B2', 50: 'D3', 54: 'Fs3', 57: 'A3', 61: 'Cs4', 64: 'E4', 68: 'Gs4', 71: 'B4', 74: 'D5', 78: 'Fs5', 81: 'A5' };
+const SMK = Object.keys(SMP).map(Number);
 const Aud = {
-  ctx: null, cache: {}, out: null, vol: 0.9,
+  ctx: null, cache: {}, out: null, vol: 0.9, smp: {}, smpState: 'none', mode: 'smp', countIn: true,
   unlocked: false,
   // iOS: sessiz düğmeye takılmamak için medya oturumu + sessiz <audio>; Safari'nin ses kilidini dokunuşta aç
   unlock() {
@@ -30,8 +33,21 @@ const Aud = {
       this.out.connect(comp); comp.connect(this.ctx.destination);
     }
     if (this.ctx.state !== 'running' && this.ctx.state !== 'closed') { try { this.ctx.resume(); } catch (e) {} }
+    if (this.smpState === 'none' && this.mode === 'smp') this.loadSamples();
     return true;
   },
+  loadSamples() {
+    if (!this.ctx || this.smpState !== 'none' || !window.fetch) return;
+    this.smpState = 'loading'; let left = SMK.length, bad = 0;
+    const done = () => { if (--left === 0) this.smpState = bad > 3 ? 'failed' : 'ready'; };
+    SMK.forEach(m => {
+      fetch('snd/' + SMP[m] + '.mp3').then(r => { if (!r.ok) throw 0; return r.arrayBuffer(); })
+        .then(b => new Promise((ok, no) => { const p = this.ctx.decodeAudioData(b, ok, no); if (p && p.then) p.then(ok, no); }))
+        .then(buf => { this.smp[m] = buf; done(); }).catch(() => { bad++; done(); });
+    });
+  },
+  // en yakın örneği bul (eşitlikte aşağıdakini seç: yukarı kaydırma sesi parlatır)
+  near(midi) { let best = null, d = 99; for (const k of SMK) { if (!this.smp[k]) continue; const x = Math.abs(midi - k); if (x < d || (x === d && k < best)) { d = x; best = k; } } return d <= 7 ? best : null; },
   now() { return this.ctx ? this.ctx.currentTime : 0; },
   // Karplus-Strong tel sesi, nota başına bir kez hesaplanır
   buf(midi) {
@@ -61,7 +77,9 @@ const Aud = {
   pluck(midi, t, vel, dur) {
     if (!this.ctx) return;
     const s = this.ctx.createBufferSource();
-    s.buffer = this.buf(midi);
+    const k = this.mode === 'smp' && this.smpState !== 'none' ? this.near(midi) : null;
+    if (k != null) { s.buffer = this.smp[k]; s.playbackRate.value = Math.pow(2, (midi - k) / 12); vel = (vel == null ? 0.5 : vel) * 1.35; }
+    else s.buffer = this.buf(midi);
     const gn = this.ctx.createGain();
     t = t || this.ctx.currentTime;
     gn.gain.setValueAtTime(vel == null ? 0.5 : vel, t);
@@ -104,17 +122,23 @@ const Aud = {
 };
 
 // ileri okumalı zamanlayıcı: stepFn(i, t, api) -> bir sonraki adıma kadar saniye
-function makeScheduler(stepFn) {
-  let timer = null, raf = null, next = 0, i = 0, queue = [];
+// opts.countIn: () => {n: vuruş sayısı, sec: vuruş süresi} — başlamadan önce sayım (ortak oynatıcı ayarı)
+function makeScheduler(stepFn, opts) {
+  let timer = null, raf = null, next = 0, i = 0, queue = [], ci = 0;
   const api = {
     running: false,
     at(t, fn) { queue.push({ t, fn }); },
     start() {
       if (!Aud.init()) return;
       api.running = true; i = 0; queue = [];
+      const cfg = opts && opts.countIn ? opts.countIn() : null; ci = cfg && cfg.n ? cfg.n : 0;
       next = Aud.ctx.currentTime + 0.15;
       timer = setInterval(() => {
-        while (next < Aud.ctx.currentTime + 0.12) { const dur = stepFn(i, next, api); next += dur; i++; }
+        while (next < Aud.ctx.currentTime + 0.12) {
+          if (i < ci) { const k = i, t = next; Aud.click(t, k === 0); api.at(t, () => G_cnt(k + 1, ci)); next += cfg.sec(); i++; continue; }
+          if (i === ci && ci) { const t = next; api.at(t, () => G_cnt(0, ci)); }
+          const dur = stepFn(i - ci, next, api); next += dur; i++;
+        }
       }, 25);
       const loop = () => {
         const now = Aud.ctx.currentTime;
@@ -126,10 +150,17 @@ function makeScheduler(stepFn) {
     stop() {
       api.running = false;
       clearInterval(timer); if (raf) cancelAnimationFrame(raf);
-      timer = null; raf = null; queue = [];
+      timer = null; raf = null; queue = []; G_cnt(0, 0);
     }
   };
   return api;
+}
+// sayım göstergesi (ekranın ortasında büyük rakam)
+function G_cnt(n, tot) {
+  let el = document.getElementById('cntov');
+  if (!n) { if (el) el.classList.remove('on'); return; }
+  if (!el) { el = document.createElement('div'); el.id = 'cntov'; el.setAttribute('aria-live', 'polite'); document.body.appendChild(el); }
+  el.textContent = n; el.classList.add('on');
 }
 
 g.Aud = Aud;

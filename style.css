@@ -555,3 +555,54 @@ details.srcs summary::-webkit-details-marker{display:none}
 .resume .ra{grid-row:1/3;grid-column:2;font-size:28px;color:var(--ac);font-weight:700}
 .pi.nx{background:var(--ac-soft);border-radius:12px;margin-left:-8px;margin-right:-8px;padding-left:8px;padding-right:8px}
 #nav .brand svg{border-radius:22%}
+/* ---------- ortak oynatıcı ---------- */
+.tstep{display:flex;gap:6px;flex-wrap:wrap;margin:-4px 0 10px}
+.tstep .btn{min-width:44px;padding:7px 10px}
+.tstep .citog{margin-left:auto}
+button.chip{border:0;color:inherit;font:inherit;font-size:14px;font-weight:600;cursor:pointer;flex:none}
+.chip.lp{box-shadow:inset 0 0 0 2px var(--bl)}
+.lpinfo{font-size:12.5px;margin:-2px 0 8px}
+svg .tc{cursor:pointer}
+svg.tab .tc.lp .tcr,svg.staff .tc.lp .tcr{fill:color-mix(in srgb,var(--bl) 14%,transparent)}
+#cntov{position:fixed;left:50%;top:42%;z-index:30;transform:translate(-50%,-50%) scale(.8);width:120px;height:120px;border-radius:50%;background:var(--ac);color:var(--ac-ink);font-size:64px;font-weight:800;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .12s,transform .12s;box-shadow:0 10px 40px rgba(0,0,0,.25)}
+#cntov.on{opacity:.95;transform:translate(-50%,-50%) scale(1)}
+.stq{display:flex;justify-content:center;background:var(--surf2);border-radius:12px;margin:6px 0}.stq svg{width:150px;height:auto}.opt svg.staff{width:100%;max-width:150px;height:auto}
+.m1t{font-size:44px;font-weight:800;text-align:center;letter-spacing:.02em;color:var(--mu);margin:6px 0 10px;font-variant-numeric:tabular-nums}
+.m1t.on{color:var(--ac)}.m1t.go{color:var(--tx)}
+.m1bars{display:flex;gap:6px;align-items:flex-end;height:110px;margin:12px 0 4px}
+.m1bars>div{flex:1;max-width:34px;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:2px}
+.m1bars i{display:block;width:100%;background:var(--ac-soft);border-radius:6px 6px 2px 2px}
+.m1bars .b i{background:var(--ac)}
+.m1bars em{font-style:normal;font-size:11px;font-weight:700;order:-1}
+.m1bars span{font-size:10px;color:var(--mu)}
+.m1in{display:flex;gap:6px;align-items:center;margin:12px 0}
+.m1in input{margin:0;text-align:center;font-size:22px;font-weight:700}
+/* ---------- kayıt ve sahne ---------- */
+.aurow{display:flex;align-items:center;gap:10px}
+.aurow input{flex:1;margin:0}
+.aurow .btn{min-width:52px}
+#stage{position:fixed;inset:0;z-index:25;background:var(--bg);display:flex;flex-direction:column;gap:14px;padding:calc(14px + env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) calc(16px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));overflow:auto}
+body.staged{overflow:hidden}
+.sgtop{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.sgtop b{font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sgnow{display:grid;grid-template-columns:1.4fr 1fr;gap:12px}
+.sgnow>div{background:var(--surf);border:1px solid var(--line);border-radius:18px;padding:14px;text-align:center}
+.sgnow span{display:block;color:var(--mu);font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.sgnow b{display:block;font-size:clamp(40px,12vw,96px);line-height:1.1;font-weight:800}
+.sgnow>div:last-child b{font-size:clamp(28px,8vw,64px);color:var(--mu)}
+.sggrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;flex:1;align-content:start}
+.sggrid span{background:var(--surf2);border-radius:12px;padding:12px 6px;text-align:center;font-size:clamp(18px,4.5vw,30px);font-weight:700}
+.sggrid span.cur{background:var(--ac);color:var(--ac-ink)}
+.sggrid small,.sgnow small{display:none}
+.syr{margin-top:10px;display:grid;gap:6px}
+.syr>div{background:var(--surf2);border-radius:10px;padding:8px 10px;font-size:14px;line-height:1.7}
+.syr span{display:block;font-size:11.5px;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.05em}
+.syr i{font-style:normal;font-weight:650}
+.rep .rs.rd{margin-right:0;padding:8px 9px;font-size:15px;line-height:1}
+.rep .rs+.rs{margin-left:4px}
+.rinf{color:var(--bl);font-weight:650}
+.two2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.two2 label{font-size:13px;color:var(--mu)}
+.recr{display:flex;flex-direction:column;gap:4px;padding:8px 0;border-top:1px solid var(--line);font-size:14px}
+.recr audio{width:100%;height:36px}
+[hidden]{display:none!important}

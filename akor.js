@@ -128,11 +128,47 @@ ${grp ? `<div class="chips" style="margin-top:10px">${list.map(c => `<span class
 <div class="muted">Akor başına vuruş</div><div class="seg">${seg}</div>
 <div class="row g"><button class="btn" id="play" data-a="tplay" data-k="${key || ''}" data-g="${grp ? grp.id : ''}" data-l='${JSON.stringify(list)}'>▶ Başla</button>${key ? `<button class="btn ghost" data-a="tclean" data-k="${key}">Temiz yaptım ✓</button>` : ''}${ladBtn()}</div>
 <p class="muted" id="best" style="margin-top:8px"></p></div>
+${key ? `<div class="card"><h3>1 dakika geçiş</h3><p class="muted">60 saniye boyunca iki akor arasında olabildiğince çok <b>temiz</b> geçiş yap; her akoru bir kez çal, sonra diğerine geç. Ekrana dokunmana gerek yok: süre bitince zil çalar, sonra kaç geçiş yaptığını girersin.</p><div class="m1t" id="m1t">1:00</div><button class="btn full" id="m1b" data-a="m1go" data-k="${key}">▶ 60 saniye başlat</button><div id="m1h">${m1Hist(key)}</div></div>` : ''}
 <div class="card"><h3>Nasıl çalışılır</h3><p class="muted">1. 4 vuruşla, 50–60 bpm’de temiz çal. Temizse “Temiz yaptım”a bas.<br>2. Hız merdivenini aç: her 4 ölçüde tempo 4 bpm artar, sen sadece çalarsın. Yetişemediğin an Durdur’a bas; rahat çaldığın son tempo kaydedilir.<br>3. 2 vuruşa, sonra her vuruşta bir geçişe in.</p></div></div></div>`,
     after: () => {
       const r = $('#bpm'); if (r) r.oninput = () => { TS.bpm = +r.value; $('#bpmv').textContent = TS.bpm + ' bpm'; };
       showBest(key, grp); G.onStop(() => stopSch(false));
     } };
+};
+// ---------- 1 dakika geçiş (JustinGuitar yöntemi) ----------
+let m1 = null;
+function m1Hist(key) {
+  const h = (S.m1 && S.m1[key]) || []; if (!h.length) return '<p class="muted" style="margin-top:8px">Henüz kayıt yok. Başlangıçta 20–30 geçiş normaldir; 60’a ulaşınca geçiş otomatikleşmiş demektir.</p>';
+  const best = Math.max(...h.map(x => x.n)), last = h.slice(-10), mx = Math.max(60, best);
+  return `<div class="m1bars">${last.map(x => `<div class="${x.n === best ? 'b' : ''}"><i style="height:${Math.max(6, x.n / mx * 100)}%"></i><em>${x.n}</em><span>${x.d.slice(8, 10)}.${x.d.slice(5, 7)}</span></div>`).join('')}</div><p class="muted">Rekor: <b>${best}</b> geçiş · son ${last.length} deneme</p>`;
+}
+function m1Stop() { if (m1) { clearInterval(m1.t); m1 = null; } const b = $('#m1b'); if (b) b.textContent = '▶ 60 saniye başlat'; const t = $('#m1t'); if (t) { t.textContent = '1:00'; t.classList.remove('on', 'go'); } }
+G.actions.m1go = d => {
+  if (m1) { m1Stop(); return; }
+  if (!Aud.init()) return; if (sch && sch.running) stopSch(false);
+  const key = d.k; let left = 63; const el = $('#m1t');
+  const t0 = Aud.now(); [0, 1, 2].forEach(i => Aud.click(t0 + 0.1 + i, false)); Aud.click(t0 + 3.1, true);
+  m1 = { t: setInterval(() => {
+    left--; const e = $('#m1t'); if (!e) { m1Stop(); return; }
+    if (left > 60) { e.textContent = String(left - 60); e.classList.add('on'); return; }
+    e.classList.add('go'); e.textContent = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
+    if (left <= 3 && left > 0) Aud.click(Aud.now() + 0.02, false);
+    if (left <= 0) { const n = Aud.now(); [0, 0.15, 0.3].forEach(x => Aud.click(n + x, true)); m1Stop(); m1Ask(key); }
+  }, 1000) };
+  const b = $('#m1b'); if (b) b.textContent = '■ Vazgeç'; if (el) { el.textContent = '3'; el.classList.add('on'); }
+  G.onStop(m1Stop);
+};
+G.m1Ask = key => m1Ask(key);
+function m1Ask(key) {
+  const h = (S.m1 && S.m1[key]) || []; const v = h.length ? h[h.length - 1].n : 20;
+  G.modal(`<h3>Kaç geçiş yaptın?</h3><p class="muted">Sadece temiz geçişleri say (tüm teller net duyulmalı).</p><div class="m1in"><button class="btn ghost" data-a="m1d" data-d="-5">−5</button><button class="btn ghost" data-a="m1d" data-d="-1">−1</button><input id="m1v" type="number" inputmode="numeric" min="0" max="200" value="${v}" aria-label="geçiş sayısı"><button class="btn ghost" data-a="m1d" data-d="1">+1</button><button class="btn ghost" data-a="m1d" data-d="5">+5</button></div><button class="btn full" data-a="m1save" data-k="${key}">Kaydet</button>`);
+}
+G.actions.m1d = d => { const i = $('#m1v'); i.value = Math.max(0, Math.min(200, (+i.value || 0) + +d.d)); };
+G.actions.m1save = d => {
+  const n = Math.max(0, Math.min(200, +$('#m1v').value || 0)); S.m1 = S.m1 || {}; const h = S.m1[d.k] = S.m1[d.k] || [];
+  const prev = h.length ? Math.max(...h.map(x => x.n)) : 0; h.push({ d: G.dayKey(), n }); if (h.length > 60) h.shift(); S.xp += 10; G.save(); G.actions.mclose();
+  const e = $('#m1h'); if (e) e.innerHTML = m1Hist(d.k);
+  if (n > prev && prev) G.modal(`<h3>Yeni rekor</h3><p class="big">${n} geçiş</p><p class="muted">Önceki rekorun ${prev}.</p>`);
 };
 function showBest(key, grp) {
   const el = $('#best'); if (!el) return;
@@ -170,7 +206,7 @@ G.actions.tplay = d => {
       hint.textContent = TS.beats > 1 && prep ? `HAZIRLAN → ${G.cnPlain(nxt.n)}` : `ŞİMDİ: ${G.cnPlain(cur.n)}${b0 >= 0 && TS.ladder ? ' · ' + TS.bpm + ' bpm' : ''}`;
     });
     return 60 / TS.bpm;
-  });
+  }, G.ci(() => 60 / TS.bpm));
   sch.lad = TS.ladder ? { start: TS.bpm, save: top => {
     if (flow) { if (!S.flow[d.g] || S.flow[d.g] < top) S.flow[d.g] = top; }
     else { const k = d.k + '@' + TS.beats; if (!S.pairs[k] || S.pairs[k] < top) S.pairs[k] = top; }
@@ -294,7 +330,7 @@ G.actions.slplay = () => {
       h.textContent = prep ? `KAY → ${G.cnPlain(nxt.n)}: ${fpos(nxt.fret)} (${dlt > 0 ? '+' : ''}${dlt})` : `ŞİMDİ: ${G.cnPlain(cur.n)} · ${fpos(cur.fret)}${TS.ladder ? ' · ' + SLS.bpm + ' bpm' : ''}`;
     });
     return 60 / SLS.bpm;
-  });
+  }, G.ci(() => 60 / SLS.bpm));
   ssch.lad = TS.ladder ? { start: SLS.bpm, save: top => { const id = u.x.id; if (!S.slide.best[id] || S.slide.best[id] < top) S.slide.best[id] = top; S.xp += 15; G.save(); } } : null;
   ssch.start();
 };
@@ -307,13 +343,13 @@ const patById = id => allPats().find(p => p.id === id) || PATTERNS[0];
 const toks = p => Array.isArray(p.steps) ? p.steps : p.steps.split(' ');
 function clickSteps(p) { const st = toks(p); return p.click || st.map((_, k) => k).filter(k => Math.abs(k * p.unit - Math.round(k * p.unit)) < 1e-6); }
 let player = null;
-function stopPlayer() { if (player) { player.stop(); player = null; } G.playing = false; const b = $('#pplay'); if (b) b.textContent = '▶ Başla'; }
+function stopPlayer() { if (player) { player.stop(); player = null; } G.playing = false; const b = $('#pplay'); if (b) b.textContent = '▶ Başla'; const sb = document.getElementById('sgp'); if (sb) sb.textContent = '▶ Başla'; }
 function playerHtml(bars, pat, bpm, opt) {
   opt = opt || {};
   const c0 = gc(bars[0]);
   const snd = S.arp.snd;
   const sb = (v, l) => `<button class="btn sm ${snd === v ? 'on' : 'ghost'}" data-a="psnd" data-v="${v}">${l}</button>`;
-  return `<div class="player"><div class="pchips" id="pchips">${bars.map((c, i) => `<span class="chip" id="pc${i}">${cn(c)}</span>`).join('')}</div>
+  return `<div class="player"><div class="pchips" id="pchips">${bars.map((c, i) => `<button class="chip" id="pc${i}" data-a="ploop" data-i="${i}">${cn(c)}</button>`).join('')}</div><div class="muted lpinfo" id="plpi">Döngü için bir akora, sonra bitiş akoruna dokun.</div>
 <div class="pmain"><div class="pnow"><div class="muted">Şimdi</div><b id="pname">${cn(bars[0])}</b><div id="pdg">${c0 ? dg(c0, { cls: 'lg', use: patUse(c0, pat).strs }) + `<div class="pus">${patUse(c0, pat).h}</div>` : ''}</div></div><div class="pnext"><div class="muted">Sıradaki</div><b id="pnn">${cn(bars[1 % bars.length])}</b><div id="pndg">${(() => { const nc = gc(bars[1 % bars.length]); const u = patUse(nc, pat); return nc ? dg(nc, { use: u.strs }) + `<div class="pus">${u.h}</div>` : ''; })()}</div></div></div>
 <div class="ptok" id="ptok">${toks(pat).map((t, i) => `<span class="tok" id="tk${i}">${t}</span>`).join('')}</div>
 <div id="phint" class="hint">Hazır</div>
@@ -340,20 +376,29 @@ function patUse(c, pat) {
   const h = ['p', 'P', 'i', 'm', 'a'].filter(k => map[k]).map(k => `<span class="pu${k === 'p' || k === 'P' ? ' b' : ''}">${nm[k]} <b>${[...map[k]].join('/')}</b></span>`).join('');
   return { strs: [...strs], h };
 }
+G.actions.ploop = d => {
+  const P = PSTATE; if (!P) return; const j = +d.i;
+  if (P.lstep === 0) { P.loop = [j, j]; P.lstep = 1; }
+  else if (P.lstep === 1) { P.loop = [Math.min(P.loop[0], j), Math.max(P.loop[0], j)]; P.lstep = 2; }
+  else { P.loop = null; P.lstep = 0; }
+  document.querySelectorAll('#pchips .chip').forEach((e, x) => e.classList.toggle('lp', !!P.loop && x >= P.loop[0] && x <= P.loop[1]));
+  const inf = $('#plpi'); if (inf) inf.textContent = !P.loop ? 'Döngü için bir akora, sonra bitiş akoruna dokun.' : P.lstep === 1 ? `Döngü: ${P.loop[0] + 1}. ölçü · bitiş için başka bir akora dokun` : `Döngü: ${P.loop[0] + 1}–${P.loop[1] + 1}. ölçüler · kaldırmak için bir akora dokun`;
+};
 G.actions.psnd = d => { S.arp.snd = d.v; G.save(); document.querySelectorAll('[data-a=psnd]').forEach(b => { const on = b.dataset.v === d.v; b.classList.toggle('on', on); b.classList.toggle('ghost', !on); }); };
 function bindPlayer(bars, pat, bpmRef, shift) {
-  PSTATE = { bars, pat, bpmRef, shift: shift || 0 };
+  PSTATE = { bars, pat, bpmRef, shift: shift || 0, loop: null, lstep: 0 };
   const r = $('#pbpm'); if (r) { r.oninput = () => { bpmRef.set(+r.value); $('#pbpmv').textContent = r.value + ' bpm'; }; r.onchange = () => G.save(); }
   G.onStop(stopPlayer);
 }
 G.actions.pplay = () => {
   if (player && player.running) { stopPlayer(); return; }
   const P = PSTATE; if (!P) return; const st = toks(P.pat), n = st.length, cs = clickSteps(P.pat);
-  G.playing = true; $('#pplay').textContent = '■ Durdur';
+  G.playing = true; $('#pplay').textContent = '■ Durdur'; { const sb = document.getElementById('sgp'); if (sb) sb.textContent = '■ Durdur'; }
   let lastBar = -1;
   player = makeScheduler((i, t, api) => {
-    const bi = Math.floor(i / n) % P.bars.length, k = i % n;
-    const c = gc(P.bars[bi]), nxtName = P.bars[(bi + 1) % P.bars.length];
+    const L = P.loop, off = L ? L[0] : 0, len = L ? L[1] - L[0] + 1 : P.bars.length;
+    const bi = off + Math.floor(i / n) % len, k = i % n;
+    const c = gc(P.bars[bi]), nxtName = P.bars[off + (bi - off + 1) % len];
     const mode = S.arp.snd; const hot = []; let extra = null;
     if (mode === 'click' && cs.includes(k)) Aud.click(t, k === 0);
     const play = (s, f, v) => { if (f >= 0) { if (mode === 'arp') Aud.pluck(M.OPEN[s] + f + P.shift, t, v); hot.push(s); } };
@@ -378,7 +423,7 @@ G.actions.pplay = () => {
         lastBar = bi;
         document.querySelectorAll('#pchips .chip').forEach((e, j) => e.classList.toggle('cur', j === bi));
         const cur = $('#pc' + bi); if (cur && P.bars.length > 8) cur.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
-        $('#pname').innerHTML = cn(P.bars[bi]); $('#pnn').innerHTML = cn(nxtName);
+        $('#pname').innerHTML = cn(P.bars[bi]); $('#pnn').innerHTML = cn(nxtName); G.stageSync(bi, nxtName);
         const nc = gc(nxtName); const nu = patUse(nc, P.pat); $('#pndg').innerHTML = nc ? dg(nc, { use: nu.strs }) + `<div class="pus">${nu.h}</div>` : '';
       }
       const prep = k >= n - Math.max(1, Math.round(n / 4));
@@ -386,7 +431,7 @@ G.actions.pplay = () => {
       h.textContent = prep ? `Hazırlan → ${G.cnPlain(nxtName)} (sol el şimdi geçsin)` : `Şimdi: ${G.cnPlain(P.bars[bi])}`;
     });
     return 60 / P.bpmRef.get() * P.pat.unit;
-  });
+  }, G.ci(() => 60 / P.bpmRef.get()));
   player.start();
 };
 
@@ -506,11 +551,74 @@ G.actions.savesong = d => {
   G.save(); G.actions.back();
 };
 G.actions.delsong = d => { if (confirm('Şarkı silinsin mi?')) { S.songs = S.songs.filter(x => x.id !== d.id); (S.songDel = S.songDel || []).push(d.id); G.save(); G.actions.back(); } };
-G.screens.song = function (p) {
-  const s = S.songs.find(x => x.id === p.id); const r = parseBars(s.txt); const P = patById(s.pat);
-  return { t: s.name, cat: 'sarki', h: `${s.note ? `<p class="muted">${esc(s.note)}</p>` : ''}<div class="card">${playerHtml(r.bars, P, s.bpm, { kapo: s.kapo })}</div><div class="row g"><button class="btn sm ghost" data-a="go" data-s="songed" data-p='${JSON.stringify({ id: s.id })}'>Düzenle</button><span class="muted">Desen: ${esc(P.name)}</span></div>`,
-    after: () => bindPlayer(r.bars, P, { get: () => s.bpm, set: v => { s.bpm = v; } }, s.kapo || 0) };
+// akor basitleştirme: yedili/sus/add → üçlü, slash basını at
+function simpName(n) { const p = M.chordParse(n); if (!p) return n; const q = { maj7: '', '7': '', m7: 'm', m7b5: 'dim', sus2: '', sus4: '', add9: '', '6': '' }[p.q]; const r = p.root + (q === undefined ? p.q : q); return gc(r) ? gc(r).n : n; }
+// kendi ses dosyan: IndexedDB'de bu cihazda saklanır, hiçbir yere gönderilmez
+const IDB = {
+  db() { return new Promise((ok, no) => { if (!window.indexedDB) return no(); const r = indexedDB.open('gg-audio', 1); r.onupgradeneeded = () => r.result.createObjectStore('a'); r.onsuccess = () => ok(r.result); r.onerror = () => no(r.error); }); },
+  async put(k, v) { const d = await this.db(); return new Promise((ok, no) => { const t = d.transaction('a', 'readwrite'); t.objectStore('a').put(v, k); t.oncomplete = ok; t.onerror = () => no(t.error); }); },
+  async get(k) { const d = await this.db(); return new Promise((ok, no) => { const r = d.transaction('a').objectStore('a').get(k); r.onsuccess = () => ok(r.result); r.onerror = () => no(r.error); }); },
+  async del(k) { const d = await this.db(); return new Promise(ok => { const t = d.transaction('a', 'readwrite'); t.objectStore('a').delete(k); t.oncomplete = ok; }); }
 };
+G.IDB = IDB;
+let AU = null; // { el, url, a, b }
+function auStop() { if (AU) { try { AU.el.pause(); } catch (e) {} if (AU.url) URL.revokeObjectURL(AU.url); } AU = null; }
+const fmt = x => isFinite(x) ? `${Math.floor(x / 60)}:${String(Math.floor(x % 60)).padStart(2, '0')}` : '–';
+G.screens.song = function (p) {
+  const s = S.songs.find(x => x.id === p.id); const r0 = parseBars(s.txt); const P = patById(s.pat);
+  const bars = s.simp ? r0.bars.map(simpName) : r0.bars;
+  const changed = r0.bars.some((b, i) => bars[i] !== b);
+  return { t: s.name, cat: 'sarki', h: `${s.note ? `<p class="muted">${esc(s.note)}</p>` : ''}<div class="card">${playerHtml(bars, P, s.bpm, { kapo: s.kapo })}</div>
+<div class="row g"><button class="btn sm ${s.simp ? 'on' : 'ghost'}" data-a="ssimp" data-id="${s.id}" aria-pressed="${!!s.simp}">Basitleştir${s.simp && changed ? ' ✓' : ''}</button><button class="btn sm ghost" data-a="stage">Sahne görünümü</button><button class="btn sm ghost" data-a="go" data-s="songed" data-p='${JSON.stringify({ id: s.id })}'>Düzenle</button><span class="muted">Desen: ${esc(P.name)}</span></div>
+${s.simp ? `<p class="muted">Basit hali: yedili, sus ve add akorlar üçlüye, slash akorlar köke indirildi.${changed ? '' : ' Bu şarkıda değişen akor yok.'}</p>` : ''}
+<div class="card" id="aucard"><h3>Kayıtla çalış</h3><p class="muted">Şarkının kendi ses dosyanı (mp3, m4a) bağla: yavaşlatıp döngüye alarak eşlik et. Dosya sadece bu cihazda saklanır.</p><div id="aubody"><p class="muted">Yükleniyor…</p></div><input type="file" id="auf" accept="audio/*" hidden></div>`,
+    after: () => {
+      bindPlayer(bars, P, { get: () => s.bpm, set: v => { s.bpm = v; } }, s.kapo || 0);
+      G.onStop(auStop); G.onStop(stageClose);
+      const f = $('#auf'); f.onchange = async () => { const file = f.files[0]; if (!file) return; try { await IDB.put('song:' + s.id, file); s.au = file.name; G.save(); } catch (e) { alert('Dosya kaydedilemedi: ' + (e && e.message || 'tarayıcı izin vermedi')); } auLoad(s); };
+      auLoad(s);
+    } };
+};
+async function auLoad(s) {
+  const body = $('#aubody'); if (!body) return; auStop();
+  let file = null; try { file = s.au ? await IDB.get('song:' + s.id) : null; } catch (e) { file = null; }
+  if (!file) { body.innerHTML = `<button class="btn sm" data-a="aupick">Ses dosyası seç</button>`; return; }
+  const url = URL.createObjectURL(file); const el = new Audio(url); el.preload = 'auto'; el.setAttribute('playsinline', '');
+  try { el.preservesPitch = true; el.webkitPreservesPitch = true; el.mozPreservesPitch = true; } catch (e) {}
+  AU = { el, url, a: null, b: null, rate: 1 };
+  body.innerHTML = `<div class="aurow"><button class="btn" id="aupl" data-a="aupl">▶</button><input type="range" id="aupos" min="0" max="1000" value="0" aria-label="konum"><span class="muted" id="aut">0:00</span></div>
+<div class="row"><span>Hız</span><b id="aurv">%100</b></div><input type="range" id="aur" min="50" max="100" step="5" value="100" aria-label="hız">
+<div class="row g"><button class="btn sm ghost" data-a="auab" data-v="a">A noktası</button><button class="btn sm ghost" data-a="auab" data-v="b">B noktası</button><button class="btn sm ghost" data-a="auab" data-v="x">Döngüyü kaldır</button><button class="btn sm ghost" data-a="aujump" data-v="-5">−5 sn</button></div>
+<p class="muted" id="auab">Döngü yok. Çalarken “A” ve “B”ye basarak bir bölümü döngüye al.</p>
+<div class="row g"><span class="muted">${esc(s.au || '')}</span><button class="btn sm link" data-a="aupick">Değiştir</button><button class="btn sm link danger" data-a="audel" data-id="${s.id}">Kaldır</button></div>`;
+  const pos = $('#aupos'), tl = $('#aut');
+  el.ontimeupdate = () => { if (!AU || AU.el !== el) return; if (AU.a != null && AU.b != null && el.currentTime >= AU.b) el.currentTime = AU.a; if (el.duration) pos.value = Math.round(el.currentTime / el.duration * 1000); tl.textContent = fmt(el.currentTime) + ' / ' + fmt(el.duration); };
+  el.onended = () => { const b = $('#aupl'); if (b) b.textContent = '▶'; };
+  pos.oninput = () => { if (el.duration) el.currentTime = pos.value / 1000 * el.duration; };
+  $('#aur').oninput = e => { el.playbackRate = +e.target.value / 100; $('#aurv').textContent = '%' + e.target.value; };
+}
+G.actions.aupick = () => { const f = $('#auf'); if (f) f.click(); };
+G.actions.aupl = (d, b) => { if (!AU) return; if (AU.el.paused) { AU.el.play().then(() => { b.textContent = '❚❚'; }).catch(() => {}); } else { AU.el.pause(); b.textContent = '▶'; } };
+G.actions.aujump = d => { if (AU) AU.el.currentTime = Math.max(0, AU.el.currentTime + +d.v); };
+G.actions.auab = d => {
+  if (!AU) return; const t = AU.el.currentTime;
+  if (d.v === 'a') { AU.a = t; if (AU.b != null && AU.b <= t) AU.b = null; } else if (d.v === 'b') { if (AU.a == null) AU.a = 0; if (t > AU.a) AU.b = t; } else { AU.a = AU.b = null; }
+  const e = $('#auab'); if (e) e.textContent = AU.a == null ? 'Döngü yok.' : AU.b == null ? `A: ${fmt(AU.a)} · şimdi B’ye bas` : `Döngü: ${fmt(AU.a)} → ${fmt(AU.b)}`;
+};
+G.actions.audel = async d => { const s = S.songs.find(x => x.id === d.id); if (!s || !confirm('Ses dosyası bu şarkıdan kaldırılsın mı?')) return; try { await IDB.del('song:' + s.id); } catch (e) {} delete s.au; G.save(); auLoad(s); };
+G.actions.ssimp = d => { const s = S.songs.find(x => x.id === d.id); s.simp = !s.simp; G.save(); G.rerender(); };
+// sahne görünümü: büyük akorlar, ekran kararmasın
+let wake = null;
+function stageClose() { const o = document.getElementById('stage'); if (o) o.remove(); document.body.classList.remove('staged'); if (wake) { try { wake.release(); } catch (e) {} wake = null; } }
+G.actions.stage = () => {
+  const P = PSTATE; if (!P) return; stageClose();
+  const o = document.createElement('div'); o.id = 'stage';
+  o.innerHTML = `<div class="sgtop"><b>${esc($('#ttl').textContent)}</b><button class="btn sm ghost" data-a="stagex">Kapat</button></div><div class="sgnow"><div><span>Şimdi</span><b id="sgn">${cn(P.bars[0])}</b></div><div><span>Sıradaki</span><b id="sgx">${cn(P.bars[1 % P.bars.length])}</b></div></div><div class="sggrid">${P.bars.map((c, i) => `<span id="sg${i}">${cn(c)}</span>`).join('')}</div><button class="btn big full" id="sgp" data-a="pplay">${player && player.running ? '■ Durdur' : '▶ Başla'}</button>`;
+  document.body.appendChild(o); document.body.classList.add('staged');
+  try { if (navigator.wakeLock) navigator.wakeLock.request('screen').then(w => { wake = w; }).catch(() => {}); } catch (e) {}
+};
+G.actions.stagex = () => stageClose();
+G.stageSync = (bi, nxt) => { const o = document.getElementById('stage'); if (!o) return; o.querySelectorAll('.sggrid span').forEach((e, j) => e.classList.toggle('cur', j === bi)); const a = $('#sgn'), b = $('#sgx'); if (a) a.innerHTML = cn(PSTATE.bars[bi]); if (b) b.innerHTML = cn(nxt); const c = $('#sg' + bi); if (c) c.scrollIntoView({ block: 'nearest' }); const pb = $('#sgp'); if (pb) pb.textContent = player && player.running ? '■ Durdur' : '▶ Başla'; };
 
 // ---------- barre ve tonlar ----------
 G.screens.tonlar = function (p) {
