@@ -189,7 +189,7 @@ const SL = {
   T3: { n: 'Üst 3 tel mini akor', d: 'Barresiz, 1-2 parmak. Kök 1. telde (6. tel ile aynı perde). Arpej ve süsleme için çok hafif.' }
 };
 const SLX = [
-  { id: 'x1', name: 'Basamak: F – G – A – B', ch: ['F', 'G', 'A', 'B'], sh: 'E', note: 'Senin örneğin: Mi şekli barre 1’den 3’e, 5’e, 7’ye kayar. Parmaklar hiç açılmaz, el tek parça kayar.' },
+  { id: 'x1', name: 'Basamak: F – G – A – B', ch: ['F', 'G', 'A', 'B'], sh: 'E', note: 'Mi şekli barre 1’den 3’e, 5’e, 7’ye kayar. Parmaklar hiç açılmaz, el tek parça kayar.' },
   { id: 'x2', name: 'Minör basamak: Fm – Gm – Am – Bm', ch: ['Fm', 'Gm', 'Am', 'Bm'], sh: 'E', note: 'Aynı kayma, minör şekille.' },
   { id: 'x3', name: 'La şekli basamak: B♭ – C – D – E', ch: ['Bb', 'C', 'D', 'E'], sh: 'A', note: '5. tel kökte aynı mantık: 1 → 3 → 5 → 7.' },
   { id: 'x4', name: 'Kromatik: F – F♯ – G – A♭ – A', ch: ['F', 'F#', 'G', 'Ab', 'A'], sh: 'E', note: 'Her adım 1 perde. Kaymayı kontrollü yapmayı öğretir.' },
@@ -436,6 +436,16 @@ const TEMPL = [
   { id: 's9', name: 'Şablon · Canon (Pachelbel)', txt: 'D A Bm F#m | G D G A', pat: 'a9', bpm: 70, kapo: 0, ex: 1 },
   { id: 's10', name: 'Şablon · ii–V–I caz balad', txt: 'Dm7 G7 Cmaj7 Am7 | Dm7 G7 Cmaj7*2', pat: 'a4', bpm: 66, kapo: 0, ex: 1 },
   { id: 's11', name: 'Şablon · 12 ölçü blues (La)', txt: 'A7*4 D7*2 A7*2 E7 D7 A7 E7', pat: 'a5', bpm: 84, kapo: 0, ex: 1 },
+  { id: 'k1', name: 'Eser · Pachelbel – Canon (D)', txt: 'D A Bm F#m | G D G A | D A Bm F#m | G D G A', pat: 'a15', bpm: 60, kapo: 0, ar: 1, note: 'Kanonun 8 akorluk bas kalıbı (ostinato), iki tur.' },
+  { id: 'k2', name: 'Eser · Bach – Prelude in C, BWV 846', txt: 'C Dm7 G7 C | Am D7 G Cmaj7 | Am7 D7 G G7 | Dm7 G7 C*2', pat: 'a24', bpm: 60, kapo: 0, ar: 1, note: 'İlk 11 ölçünün armonisi ve kapanış kadansı; orijinaldeki bas değişimleri (Dm7/C, G7/B gibi) sadeleştirildi.' },
+  { id: 'k3', name: 'Eser · Beethoven – Ay Işığı Sonatı (giriş)', txt: 'Am Am/G F Bb E7 E7 Am Am', pat: 'a22', bpm: 52, kapo: 4, ar: 1, note: 'Orijinal ton Do♯ minör; kapo 4 ile La minör şekilleri. İlk ölçülerin armonik özeti.' },
+  { id: 'k4', name: 'Eser · Satie – Gymnopédie 1 (giriş)', txt: 'Gmaj7 Dmaj7 Gmaj7 Dmaj7 | Gmaj7 Dmaj7 Gmaj7 Dmaj7', pat: 'a23', bpm: 66, kapo: 0, ar: 1, note: 'Açılıştaki iki akorun salınımı, 3/4.' },
+  { id: 'k5', name: 'Eser · Romance (İspanyol romansı)', txt: 'Em*6 Am*2 B7*2 Em*2 Am B7 Em*2 | E*2 A*2 B7*2 E*4 A*2 E B7 E*2', pat: 'a13', bpm: 60, kapo: 0, ar: 1, note: 'Minör ve majör bölüm. Am6 ve A6 sade Am ve A olarak yazıldı.' },
+  { id: 'k6', name: 'Eser · La Folia', txt: 'Dm A Dm C F C Dm A | Dm A Dm C F C A Dm', pat: 'a2', bpm: 76, kapo: 0, ar: 1, note: 'Barok dönemin ünlü 16 ölçülük armonik kalıbı (Corelli, Vivaldi, Sanz).' },
+  { id: 'k7', name: 'Eser · Romanesca (Guárdame las vacas)', txt: 'C G Am E | C G Am E Am', pat: 'a2', bpm: 80, kapo: 0, ar: 1, note: 'Narváez’in Guárdame las vacas varyasyonlarının temeli olan Rönesans kalıbı (III–VII–i–V).' },
+  { id: 'k8', name: 'Eser · Passamezzo antico', txt: 'Am G Am E | C G Am E Am', pat: 'a2', bpm: 80, kapo: 0, ar: 1, note: 'Rönesans dans kalıbı (i–VII–i–V–III–VII–i–V–i).' },
+  { id: 'k9', name: 'Eser · Greensleeves (anonim)', txt: 'Am G Am E | Am G Am E Am | C G Am E | C G Am E Am', pat: 'a2', bpm: 72, kapo: 0, ar: 1, note: '16. yüzyıl İngiliz halk ezgisi, 6/8.' },
+  { id: 'k10', name: 'Eser · House of the Rising Sun (geleneksel)', txt: 'Am C D F | Am C E E | Am C D F | Am E Am E', pat: 'a2', bpm: 84, kapo: 0, ar: 1, note: 'Geleneksel Amerikan halk şarkısı; en bilinen 6/8 arpej eşliği.' },
   { id: 'bm1', name: 'Barış Manço · Gülpembe', txt: 'Em Am Em D G F Em | Am Em D G F Em | D Em D Em D Em D Em | Em Am Em D G F Em', pat: 'a3', bpm: 72, kapo: 0, bm: 1 },
   { id: 'bm2', name: 'Barış Manço · Dönence', txt: 'Em F Em F | Em F Em F Em*2', pat: 'a7', bpm: 64, kapo: 0, bm: 1 },
   { id: 'bm3', name: 'Barış Manço · Unutamadım', txt: 'Bm Em Bm Em Bm | Em D C Bm | Em D C Bm | Bm C Bm C Bm | D C Bm D C Bm | Em D C Bm', pat: 'a3', bpm: 70, kapo: 1, bm: 1, note: 'Orijinal ton Do minör; kapo 1 ile Si minör şekilleri.' },
@@ -452,12 +462,12 @@ G.initSongs = () => {
   G.save();
 };
 G.screens.songs = function () {
-  const row = s => { const r = parseBars(s.txt); return `<div class="song"><button class="sgo" data-a="go" data-s="song" data-p='${JSON.stringify({ id: s.id })}'><b>${esc(s.name.replace(/^(Şablon|Barış Manço) · /, ''))}</b><span class="muted">${r.bars.slice(0, 8).map(G.cnPlain).join(' ')}${r.bars.length > 8 ? ' …' : ''} · ${s.bpm} bpm${s.kapo ? ' · kapo ' + s.kapo : ''}</span></button><button class="btn sm ghost" data-a="go" data-s="songed" data-p='${JSON.stringify({ id: s.id })}' aria-label="düzenle">Düzenle</button></div>`; };
-  const mine = S.songs.filter(s => !s.ex && !s.bm), bm = S.songs.filter(s => s.bm), ex = S.songs.filter(s => s.ex);
+  const row = s => { const r = parseBars(s.txt); return `<div class="song"><button class="sgo" data-a="go" data-s="song" data-p='${JSON.stringify({ id: s.id })}'><b>${esc(s.name.replace(/^(Şablon|Barış Manço|Eser) · /, ''))}</b><span class="muted">${r.bars.slice(0, 8).map(G.cnPlain).join(' ')}${r.bars.length > 8 ? ' …' : ''} · ${s.bpm} bpm${s.kapo ? ' · kapo ' + s.kapo : ''}</span></button><button class="btn sm ghost" data-a="go" data-s="songed" data-p='${JSON.stringify({ id: s.id })}' aria-label="düzenle">Düzenle</button></div>`; };
+  const mine = S.songs.filter(s => !s.ex && !s.bm && !s.ar), bm = S.songs.filter(s => s.bm), ex = S.songs.filter(s => s.ex), ar = S.songs.filter(s => s.ar);
   const sec = (t, arr, d) => arr.length ? `<h2 class="sec">${t}</h2>${d ? `<p class="muted">${d}</p>` : ''}<div class="songs lvgrid">${arr.map(row).join('')}</div>` : '';
   return { t: 'Şarkılarım', cat: 'sarki', h: `<p class="muted">Çalmak istediğin şarkının akorlarını internetten bul, buraya yaz. Her akor bir ölçü; <code>Am*2</code> iki ölçü, <code>%</code> öncekini tekrarlar, <code>|</code> sadece okunurluk için.</p>
 <button class="btn" data-a="go" data-s="songed" data-p='{}'>+ Yeni şarkı</button>
-${sec('Kendi şarkıların', mine)}${sec('Barış Manço', bm, 'Akor sırası akorculuk.com ve guitartabsexplorer.com’dan; ölçü süreleri yaklaşık. Kulağınla kontrol edip düzenleyebilirsin. Bazılarında kapo ile kolay şekiller kullanıldı.')}${sec('Sık kullanılan dizilimler', ex, 'Pop’un en yaygın akor kalıpları. Bir şarkının akorları bunlardan birine benziyorsa onu temel alıp düzenle.')}` };
+${sec('Kendi şarkıların', mine)}${sec('Arpejle eserler', ar, 'Armonisi arpejle çalınan eserler: akorları bas, deseni çal, eser kendiliğinden ortaya çıkar.')}${sec('Barış Manço', bm, 'Akor sırası akorculuk.com ve guitartabsexplorer.com’dan; ölçü süreleri yaklaşık. Kulağınla kontrol edip düzenleyebilirsin. Bazılarında kapo ile kolay şekiller kullanıldı.')}${sec('Sık kullanılan dizilimler', ex, 'Pop’un en yaygın akor kalıpları. Bir şarkının akorları bunlardan birine benziyorsa onu temel alıp düzenle.')}` };
 };
 G.screens.songed = function (p) {
   const s = S.songs.find(x => x.id === p.id) || { id: null, name: '', txt: '', pat: 'a3', bpm: 70, kapo: 0 };

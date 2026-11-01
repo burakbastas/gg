@@ -68,7 +68,7 @@ const TIPS = [
   '<b>Oktav şekli:</b> 6. teldeki bir notanın 2 tel ince, 2 perde ilerisi aynı notadır (6. tel 3. perde Sol = 4. tel 5. perde Sol).',
   '<b>Oktav şekli:</b> 5. teldeki notanın 2 tel ince, 2 perde ilerisi (5. tel 3. perde Do = 3. tel 5. perde Do).',
   'Dikkat: Sol–Si telleri arası 4 perde (diğerleri 5). <b>Oktav şekli</b> 4. telden: 2 tel ince, 3 perde ileri (4. tel 2. perde Mi = 2. tel 5. perde Mi).',
-  'Kalın Mi teliyle aynı notalar, iki oktav yukarı. 6. teli biliyorsan bu tel bedava.'
+  'Kalın Mi teliyle aynı notalar, iki oktav yukarı. 6. teldeki notalar burada da geçerli.'
 ];
 const FLV = [];
 [0, 1, 2, 3, 4, 5].forEach(s => FLV.push({ id: 'f' + (s + 1), name: SN[s] + ' · doğal notalar', desc: '0–12. perde, sadece doğal notalar', keys: () => poolStr([s], true),
@@ -86,7 +86,7 @@ G.FLV = FLV;
 
 G.screens.sap = function () {
   const due = G.dueCount();
-  return { t: 'Klavye haritası', cat: 'sap', h: `<div class="row g" style="margin:0 0 10px">${due ? `<button class="btn sm" data-a="review">Tekrar zamanı (${due})</button>` : ''}<button class="btn sm ghost" data-a="go" data-s="heat">Isı haritası</button></div><p class="muted">Yanlış yaptıkların daha sık, bildiklerin seyrek gelir. İlk 5 perdeyi ve kalın Mi telini biliyorsan o seviyeleri “Zaten biliyorum” ile geçebilirsin.</p><div class="lvgrid">${G.levelList(FLV)}</div>` };
+  return { t: 'Klavye haritası', cat: 'sap', h: `<div class="row g" style="margin:0 0 10px">${due ? `<button class="btn sm" data-a="review">Tekrar zamanı (${due})</button>` : ''}<button class="btn sm ghost" data-a="go" data-s="heat">Isı haritası</button></div><p class="muted">Yanlış yaptıkların daha sık, bildiklerin seyrek gelir. Bildiğin seviyeleri “Zaten biliyorum” ile geçebilirsin.</p><div class="lvgrid">${G.levelList(FLV)}</div>` };
 };
 G.screens.heat = function () {
   let h = '<p class="muted">Kırmızı: zayıf · turuncu/sarı: öğreniliyor · yeşil: pekişti · boş: henüz görülmedi. Üst satır = ince Mi teli.</p><div class="card"><div class="heat"><span></span>';

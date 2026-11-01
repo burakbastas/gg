@@ -73,7 +73,7 @@ G.screens.asistan = function () {
 <div class="seg sm"><button class="btn sm ${ASS.mode === 'maj' ? 'on' : 'ghost'}" data-a="asmode" data-v="maj">Majör</button><button class="btn sm ${ASS.mode === 'min' ? 'on' : 'ghost'}" data-a="asmode" data-v="min">Minör</button></div><div class="chips">${keys}</div>
 <button class="btn" id="drbtn" data-a="drone">▶ Ton sesi</button></div>
 <div class="card"><h3>2. Akorları dene · ${G.nn(ASS.k)} ${ASS.mode === 'maj' ? 'majör' : 'minör'}</h3><p class="muted">Bu tonda en sık geçen akorlar, sıklık sırasıyla. Dokun: çalar. İlk dördüyle şarkıların çoğu çözülür.</p><div class="cgrid">${cards}</div></div>
-<div class="card"><h3>3. Melodi notası → akor</h3><p class="muted">Şarkıda vurgulu duyduğun melodi notasını seç (solo çaldığın için gitarda kolayca bulursun). O notayı içeren akorlar yukarıda turuncu çerçeveyle işaretlenir.</p><div class="chips">${notes}</div></div>
+<div class="card"><h3>3. Melodi notası → akor</h3><p class="muted">Şarkıda vurgulu duyduğun melodi notasını seç. O notayı içeren akorlar yukarıda turuncu çerçeveyle işaretlenir.</p><div class="chips">${notes}</div></div>
 <div class="card"><h3>4. Şarkıya kaydet</h3><label>Şarkı adı<input id="asn" placeholder="Şarkı adı"></label><label>Bulduğun akorlar<textarea id="ast" rows="3" placeholder="G D Em C | G D C*2" autocapitalize="off" spellcheck="false">${ASS.txt}</textarea></label><div id="aserr" class="err"></div><button class="btn" data-a="assave">Şarkılarım’a ekle</button></div>`,
     after: () => { G.onStop(stopDrone); const t = $('#ast'); if (t) t.oninput = () => { ASS.txt = t.value; }; } };
 };

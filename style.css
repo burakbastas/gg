@@ -466,3 +466,28 @@ details.yol.ok .lvn{background:var(--gr-soft);color:var(--gr)}
 .yk.ok .cbx{background:var(--gr-soft);border-color:var(--gr)}
 .cc.hit{border:2px solid var(--ac);background:var(--ac-soft)}
 #drbtn.on{background:var(--gr);color:#04210f}
+/* ---------- nota ---------- */
+svg.staff{display:block}
+svg.staff .sline{stroke:var(--tx);stroke-width:1;opacity:.75}
+svg.staff .sbar{stroke:var(--tx);stroke-width:1.3}
+svg.staff .clef{fill:var(--tx);font-size:46px;font-family:"Noto Music","Segoe UI Symbol","Apple Symbols","Bravura",serif}
+svg.staff .clef8{fill:var(--tx);font-size:10px;font-weight:700}
+svg.staff .nh{fill:var(--tx)}
+svg.staff .stem{stroke:var(--tx);stroke-width:1.3}
+svg.staff .beam{fill:var(--tx)}
+svg.staff .flag{fill:none;stroke:var(--tx);stroke-width:1.6}
+svg.staff .acc{fill:var(--tx);font-size:13px;font-weight:700}
+svg.staff .tup{fill:var(--mu);font-size:10px;font-style:italic;font-weight:700}
+svg.staff .rest{fill:var(--tx);font-size:20px;font-family:"Noto Music","Segoe UI Symbol","Apple Symbols",serif}
+svg.staff .ttop{fill:var(--ac);font-size:11px;font-weight:800}
+svg.staff .tcr{fill:transparent}
+svg.staff .tc.cur .tcr{fill:var(--ac-soft)}
+svg.staff .tc.cur .nh{fill:var(--ac)}
+.vw{margin-top:0}
+.rep{padding:0;overflow:hidden}
+.rep a{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;padding:10px 12px;color:var(--tx);text-decoration:none}
+.rep a b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rep .rs{flex:none;background:var(--surf2);border:0;border-radius:10px;margin:8px;padding:8px 10px;font-size:12px;font-weight:700;color:var(--mu)}
+.rep.s1 .rs{background:var(--ac-soft);color:var(--ac)}
+.rep.s2 .rs{background:var(--surf);color:var(--gr)}
+@media (hover:hover){.rep a:hover b{color:var(--ac)}}

@@ -61,6 +61,79 @@ G.actions.tabplay = () => { if (CUR) startTab(CUR.cols, CUR.save); };
 G.actions.tablad = (d, el) => { TP.ladder = !TP.ladder; el.classList.toggle('on', TP.ladder); el.classList.toggle('ghost', !TP.ladder); el.textContent = 'Hız merdiveni: ' + (TP.ladder ? 'açık' : 'kapalı'); };
 G.actions.tabclean = () => { if (!CUR) return; CUR.save(TP.bpm); const e = $('#tbest'); if (e) e.textContent = 'Kaydedildi: ' + TP.bpm + ' bpm'; };
 
+
+// ================= NOTA (PORTE) =================
+const LETS = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+const SHP = [[0, ''], [0, '♯'], [1, ''], [1, '♯'], [2, ''], [3, ''], [3, '♯'], [4, ''], [4, '♯'], [5, ''], [5, '♯'], [6, '']];
+const FLP = [[0, ''], [1, '♭'], [1, ''], [2, '♭'], [2, ''], [3, ''], [4, '♭'], [4, ''], [5, '♭'], [5, ''], [6, '♭'], [6, '']];
+function staffSvg(cols, o) {
+  o = o || {};
+  const CW = 28, X0 = 58, TOP = 58, G2 = 4; // G2: yarım aralık (çizgi-boşluk)
+  const BOT = TOP + 8 * G2; // alt çizgi (Mi4)
+  const W = X0 + cols.length * CW + 18, H = 168;
+  const yOf = midi => { const m = midi + 12; const sp = (o.flats ? FLP : SHP)[m % 12]; const dn = (Math.floor(m / 12) - 1) * 7 + sp[0]; return { y: BOT - (dn - 30) * G2, acc: sp[1] }; };
+  let h = `<svg class="staff" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">`;
+  for (let k = 0; k < 5; k++) h += `<line x1="8" x2="${W - 8}" y1="${TOP + k * 8}" y2="${TOP + k * 8}" class="sline"/>`;
+  h += `<text x="10" y="${BOT + 6}" class="clef">𝄞</text><text x="24" y="${BOT + 30}" class="clef8">8</text>`;
+  const anyUp = cols.some(c => c.n.some(n => n.v !== 'd'));
+  const info = cols.map((c, i) => {
+    const x = X0 + i * CW + CW / 2;
+    const ns = c.n.map(n => Object.assign({ m: M.OPEN[n.s] + n.f }, n));
+    let up = ns.filter(n => n.v === 'u' || (n.v !== 'd' && !(c.top || '').startsWith('p'))), dn = ns.filter(n => !up.includes(n));
+    if (!anyUp) { up = ns; dn = []; }
+    if (!ns.some(n => n.v) && (c.top || '').startsWith('p') && ns.length > 1) { const lo = ns.reduce((a, b) => a.m < b.m ? a : b); dn = [lo]; up = ns.filter(n => n !== lo); }
+    return { x, c, up: up.map(n => Object.assign(n, yOf(n.m))), dn: dn.map(n => Object.assign(n, yOf(n.m))) };
+  });
+  let beat = 0; const beatOf = info.map(I => { const b = Math.floor(beat + 1e-6); beat += I.c.d; return b; });
+  // gruplar: aynı vuruş içindeki üst ses sütunları
+  const groups = []; let cur = null;
+  info.forEach((I, i) => { if (!I.up.length || I.c.d >= 1) { cur = null; return; } if (cur && beatOf[i] === cur.b && !I.c.bar) cur.ix.push(i); else { cur = { b: beatOf[i], ix: [i] }; groups.push(cur); } });
+  const stemTop = {};
+  groups.forEach(g => { const top = Math.min.apply(null, g.ix.flatMap(i => info[i].up.map(n => n.y))) - 26; g.ix.forEach(i => { stemTop[i] = Math.min(top, BOT - 34); }); g.top = Math.min(top, BOT - 34); });
+  info.forEach((I, i) => {
+    const { x, c } = I;
+    if (c.bar && i > 0) h += `<line x1="${x - CW / 2}" x2="${x - CW / 2}" y1="${TOP}" y2="${BOT}" class="sbar"/>`;
+    h += `<g class="tc" id="tc${i}"><rect x="${x - CW / 2 + 1}" y="4" width="${CW - 2}" height="${H - 8}" rx="6" class="tcr"/>`;
+    if (c.top) h += `<text x="${x}" y="16" text-anchor="middle" class="ttop">${c.top}</text>`;
+    const head = (n, dx) => {
+      let r = '';
+      for (let ly = BOT + 8; ly <= n.y + 0.1; ly += 8) r += `<line x1="${x + dx - 8}" x2="${x + dx + 8}" y1="${ly}" y2="${ly}" class="sline"/>`;
+      for (let ly = TOP - 8; ly >= n.y - 0.1; ly -= 8) r += `<line x1="${x + dx - 8}" x2="${x + dx + 8}" y1="${ly}" y2="${ly}" class="sline"/>`;
+      if (n.acc) r += `<text x="${x + dx - 13}" y="${n.y + 4}" class="acc">${n.acc}</text>`;
+      return r + `<ellipse cx="${x + dx}" cy="${n.y}" rx="4.8" ry="3.6" transform="rotate(-20 ${x + dx} ${n.y})" class="nh"/>`;
+    };
+    // aynı ses yüksekliğinde iki ses ayrı dursun
+    I.up.forEach(n => { h += head(n, 0); });
+    I.dn.forEach(n => { const clash = I.up.some(u => Math.abs(u.y - n.y) < 4); h += head(n, clash ? -9 : 0); });
+    if (I.up.length) {
+      const lo = Math.max.apply(null, I.up.map(n => n.y)), hi = Math.min.apply(null, I.up.map(n => n.y));
+      const top = stemTop[i] != null ? stemTop[i] : hi - 26;
+      h += `<line x1="${x + 4.5}" x2="${x + 4.5}" y1="${lo}" y2="${top}" class="stem"/>`;
+      if (stemTop[i] == null && c.d < 1) { h += `<path d="M${x + 4.5} ${top} q8 6 6 16" class="flag"/>`; if (c.d <= 0.26) h += `<path d="M${x + 4.5} ${top + 6} q8 6 6 16" class="flag"/>`; }
+    }
+    if (I.dn.length) {
+      const hi = Math.min.apply(null, I.dn.map(n => n.y)), lo = Math.max.apply(null, I.dn.map(n => n.y));
+      h += `<line x1="${x - 4.5}" x2="${x - 4.5}" y1="${hi}" y2="${lo + 26}" class="stem"/>`;
+    }
+    if (!c.n.length) h += `<text x="${x}" y="${TOP + 20}" text-anchor="middle" class="rest">𝄽</text>`;
+    h += '</g>';
+  });
+  groups.forEach(g => {
+    if (g.ix.length < 2) { const i = g.ix[0], I = info[i]; const c = I.c; h += `<path d="M${I.x + 4.5} ${g.top} q8 6 6 16" class="flag"/>`; if (c.d <= 0.26) h += `<path d="M${I.x + 4.5} ${g.top + 6} q8 6 6 16" class="flag"/>`; return; }
+    const xa = info[g.ix[0]].x + 4.5, xb = info[g.ix[g.ix.length - 1]].x + 4.5, d = info[g.ix[0]].c.d;
+    h += `<rect x="${xa}" y="${g.top}" width="${xb - xa + 1}" height="3.4" class="beam"/>`;
+    if (d <= 0.26) h += `<rect x="${xa}" y="${g.top + 6}" width="${xb - xa + 1}" height="3.4" class="beam"/>`;
+    if (Math.abs(d - 1 / 3) < 0.01) h += `<text x="${(xa + xb) / 2}" y="${g.top - 4}" text-anchor="middle" class="tup">3</text>`;
+  });
+  h += `<line x1="${W - 14}" x2="${W - 14}" y1="${TOP}" y2="${BOT}" class="sbar"/><rect x="${W - 11}" y="${TOP}" width="3.5" height="${BOT - TOP}" class="beam"/>`;
+  return h + '</svg>';
+}
+function viewH(cols, o) {
+  const v = S.set.view || 'nota';
+  return `<div class="tabwrap">${v === 'tab' ? tabSvg(cols) : staffSvg(cols, o)}</div><div class="seg sm vw"><button class="btn sm ${v === 'nota' ? 'on' : 'ghost'}" data-a="setview" data-v="nota">Nota görünümü</button><button class="btn sm ${v === 'tab' ? 'on' : 'ghost'}" data-a="setview" data-v="tab">Tab görünümü</button></div>`;
+}
+G.actions.setview = d => { stopTab(false); S.set.view = d.v; G.save(); G.rerender(); };
+G.staffSvg = staffSvg;
 // ================= GIULIANI 120 =================
 // Akor seslendirmesi (6. telden 1. tele). C ölçüsünde 6. tel Sol (bas için), G7: 3-2-0-0-3-1
 const VOI = { C: [3, 3, 2, 0, 1, 0], G7: [3, 2, 0, 0, 3, 1] };
@@ -137,7 +210,7 @@ function giuCols(g) {
           if (t.length > 1) str = 6 - +t[1];
           else if (t === 'p') { const b = P.bass[gi % 4]; if (b) str = 6 - b; }
           else str = { i: 3, m: 4, a: 5 }[t];
-          if (str != null && !n.some(x => x.s === str)) n.push({ s: str, f: V[str] });
+          if (str != null && !n.some(x => x.s === str)) n.push({ s: str, f: V[str], v: t[0] === 'p' ? 'd' : 'u' });
         });
         cols.push({ n, top: tok.split('+').map(x => x[0]).join(''), d: P.unit, bar: mi === 1 && gi === 0 && k === 0 });
       });
@@ -150,9 +223,7 @@ G.giuCols = giuCols;
 G.screens.giu = function () {
   const done = GD.filter(g => S.giu[g[0]]).length;
   const mark = S.giuMark;
-  let h = `<div class="intro"><p>Giuliani Op. 1’in 120 sağ el formülü, PDF’indeki seviye sırasıyla. Her etüt C ve G7 ölçüsünün tekrarıdır. Formül, tab ve ses uygulamada; notayı PDF’ten takip edebilirsin. ${done}/${GD.length} formül tamamlandı.</p>
-${!S.giuAsked ? `<div class="row g"><button class="btn sm" data-a="giumark">PDF’te 17’nin altına çizgi çekmişsin: 17’ye kadar olanları tamamlandı say</button><button class="btn sm link" data-a="giuno">Hayır</button></div>` : ''}</div>
-<p class="muted">Not: PDF’teki bazı ölçülerde G7’nin 2. tel notası değişiyor (Si/Re); burada sabit Re kullanıldı. 104–105, 111–114 gibi sol el melodili ve VII. seviye etütleri buraya alınmadı, onları PDF’ten çalış.</p>`;
+  let h = `<p class="muted">Op. 1, 120 sağ el formülü, seviye sırasıyla · ${done}/${GD.length} tamamlandı. Her etüt C ve G7 ölçüsünün tekrarıdır. G7’de 2. tel sabit Re alındı; sol el melodili etütler (104–105, 111–114) ve VII. seviye dahil değil.</p>`;
   Object.keys(GLV).forEach(lv => {
     const items = GD.filter(g => g[1] === lv);
     const dn = items.filter(g => S.giu[g[0]]).length;
@@ -160,7 +231,7 @@ ${!S.giuAsked ? `<div class="row g"><button class="btn sm" data-a="giumark">PDF�
   });
   return { t: 'Giuliani 120 arpej', cat: 'klasik', h };
 };
-G.actions.giumark = () => { const k = GORD.indexOf('17'); GORD.slice(0, k + 1).forEach(no => { if (!S.giu[no]) S.giu[no] = { bpm: 0, d: G.dayKey() }; }); S.giuMark = '17'; S.giuAsked = 1; G.save(); G.rerender(); };
+G.actions.giuupto = d => { const k = GORD.indexOf(d.no); if (!confirm(lab(d.no) + ' dahil önceki tüm formüller tamamlandı sayılsın mı?')) return; GORD.slice(0, k + 1).forEach(no => { if (!S.giu[no]) S.giu[no] = { bpm: 0, d: G.dayKey() }; }); S.giuMark = d.no; G.save(); G.rerender(); };
 G.actions.giuno = () => { S.giuAsked = 1; G.save(); G.rerender(); };
 G.screens.giud = function (p) {
   const g = GD.find(x => x[0] === p.no), i = GORD.indexOf(p.no); const P = giuParse(g); const cols = giuCols(g);
@@ -168,9 +239,9 @@ G.screens.giud = function (p) {
   const prev = GORD[i - 1], next = GORD[i + 1];
   const r = S.giu[g[0]];
   return { t: 'Giuliani ' + lab(g[0]), cat: 'klasik', h: `<div class="card"><div class="row"><div><div class="big">${lab(g[0])}</div><div class="muted">${GLV[g[1]][0]} · ${{ q: 'dörtlük', t: 'üçleme', e: 'sekizlik', s: '16’lık' }[g[2]]}</div></div><div class="fing">${P.fingers.split(' ').map(f => `<span>${f}</span>`).join('')}</div></div>
-<div class="tabwrap">${tabSvg(cols)}</div><div class="row g"><span class="muted">Akorlar:</span><div class="pair mini2"><div>${CHM.diagram({ n: 'C', fr: [-1, 3, 2, 0, 1, 0], fg: [0, 3, 2, 0, 1, 0] }, { cls: 'mini' })}<b>C</b></div><div>${CHM.diagram({ n: 'G7', fr: VOI.G7, fg: [3, 2, 0, 0, 4, 1] }, { cls: 'mini' })}<b>G7</b></div></div></div></div>
+${viewH(cols)}<div class="row g"><span class="muted">Akorlar:</span><div class="pair mini2"><div>${CHM.diagram({ n: 'C', fr: [-1, 3, 2, 0, 1, 0], fg: [0, 3, 2, 0, 1, 0] }, { cls: 'mini' })}<b>C</b></div><div>${CHM.diagram({ n: 'G7', fr: VOI.G7, fg: [3, 2, 0, 0, 4, 1] }, { cls: 'mini' })}<b>G7</b></div></div></div></div>
 ${playerCard('giu', r && r.bpm)}
-<div class="row g">${prev ? `<button class="btn ghost" data-a="giunav" data-no="${prev}">‹ ${lab(prev)}</button>` : ''}${next ? `<button class="btn ghost" data-a="giunav" data-no="${next}">${lab(next)} ›</button>` : ''}</div>`,
+<div class="row g">${prev ? `<button class="btn ghost" data-a="giunav" data-no="${prev}">‹ ${lab(prev)}</button>` : ''}<button class="btn sm link" data-a="giuupto" data-no="${g[0]}">Buraya kadarını tamamlandı say</button>${next ? `<button class="btn ghost" data-a="giunav" data-no="${next}">${lab(next)} ›</button>` : ''}</div>`,
     after: bindTab };
 };
 G.actions.giunav = d => G.replace('giud', { no: d.no });
@@ -237,7 +308,7 @@ G.screens.ex = function (p) {
   if (e.perm) opts += `<div class="chips">${PERMS.map(x => `<button class="chipb ${x === o.p ? 'on' : ''}" data-a="exo" data-id="${p.id}" data-f="p" data-v="${x}">${x.split('').join('-')}</button>`).join('')}</div>`;
   if (e.pos) opts += `<div class="chips">${[2, 3, 4, 5, 7, 9].map(x => `<button class="chipb ${x === o.pos ? 'on' : ''}" data-a="exo" data-id="${p.id}" data-f="pos" data-v="${x}">${x}. pozisyon</button>`).join('')}</div>`;
   return { t: e.n, cat: 'klasik', h: `<div class="card"><div class="tag">${e.h === 'R' ? 'Sağ el' : 'Sol el'} · Delcamp ${e.g}. seviye</div><p>${e.d}</p>${opts}
-<div class="tabwrap">${cols.length ? tabSvg(cols) : '<p class="muted">Bu ton bu pozisyonda çıkmıyor, başka pozisyon seç.</p>'}</div>
+${cols.length ? viewH(cols, { flats: e.keys && ['F'].includes(k[0]) }) : '<p class="muted">Bu ton bu pozisyonda çıkmıyor, başka pozisyon seç.</p>'}
 <p class="muted">Üstteki satır: ${e.h === 'R' ? 'sağ el parmağı (p i m a)' : 'sol el parmağı (0 = boş tel, V = vurma, Ç = çekme, B = barre perdesi)'}.</p></div>${playerCard(p.id, S.ex[p.id])}`, after: bindTab };
 };
 G.actions.exo = d => { const o = Object.assign({}, exOpts(d.id)); o[d.f] = d.f === 'p' ? d.v : +d.v; S.exo[d.id] = o; G.save(); G.rerender(); };
@@ -248,43 +319,76 @@ G.screens.sagel = () => ({ t: 'Sağ el', cat: 'klasik', h: `<p class="muted">Sol
 G.screens.solel = () => ({ t: 'Sol el', cat: 'klasik', h: `<p class="muted">Soldaki sayı Delcamp seviyesi. Her alıştırmada tab, parmak numarası, metronom ve hız merdiveni var.</p><div class="menus">${exList('L')}</div>` });
 
 // ================= DELCAMP SEVİYELERİ =================
+const PB = 'https://www.classical-guitar-sheet-music.com/apdfsdelcamp/';
+const COLL = { 1: 'delcamp_beginner_level_1_classical_guitar_sheet_music.pdf', 2: 'delcamp_beginner_level_2_classical_guitar_sheet_music.pdf', 3: 'delcamp_beginner_level_3_classical_guitar_sheet_music.pdf', 4: 'delcamp_beginner_level_4_classical_guitar_sheet_music.pdf',
+  5: 'Delcamp_intermediate_level_5_classical_guitar_sheet_music.pdf', 6: 'Delcamp_intermediate_level_6_classical_guitar_sheet_music.pdf', 7: 'Delcamp_intermediate_level_7_classical_guitar_sheet_music.pdf', 8: 'Delcamp_intermediate_level_8_classical_guitar_sheet_music.pdf',
+  MB1: 'Classical_masterpieces_for_guitar_Book_1_for_beginner.pdf', MB2: 'Classical_masterpieces_for_guitar_Book_2_for_beginner.pdf', REN1: 'Renaissance_Music_Book_1_For_Beginner_Guitarists.pdf', SAG1: 'Julio_Salvador_Sagreras_Las_Primeras_Lecciones_de_guitarra.pdf' };
+// [besteci, eser, PDF dosyası | derleme anahtarı (arama ile açılır)]
 const DG = [
   { g: 1, t: 'Başlangıç', top: ['Apoyando (dayanarak vuruş)', 'Boş teller ve susturma', 'Do ve Sol majör gamları', '3’lü gamlar', 'Basit akorlar ve arpejler', 'Bağ (ligado) girişi', 'İki ses (polifoni)', 'Ritim okuma'],
     ex: ['rh1', 'rh2', 'rh4', 'rh5', 'lh1', 'lh6', 'lh3'], giu: ['I'],
-    rep: [['Fernando Sor', 'Leçon 1–3, op. 60'], ['Dionisio Aguado', 'Lección 5a, 6a, 7'], ['Matteo Carcassi', 'Exercice, op. 59'], ['Joseph Küffner', 'Sonatine 1, op. 80'], ['Julio S. Sagreras', 'Lecciones 40–47'], ['Adrian Le Roy', 'Branle de Poictou 2 ve 4'], ['Gaspar Sanz', 'Villano'], ['Anonim', 'Scarborough Fair']] },
+    rep: [['Fernando Sor', 'Leçon 1, op. 60', 'Fernando_Sor_Lecon_1_op_60.pdf'], ['Fernando Sor', 'Leçon 2, op. 60', 'Fernando_Sor_Lecon_2_op_60.pdf'], ['Fernando Sor', 'Leçon 3, op. 60', 'Fernando_Sor_Lecon_3_op_60.pdf'],
+      ['Dionisio Aguado', 'Lección 5a', 'Dionisio_Aguado_Leccion_5a.pdf'], ['Dionisio Aguado', 'Valse in G', 'Dionisio_Aguado_Valse_sol_majeur.pdf'], ['Matteo Carcassi', 'Exercice, op. 59', 'Matteo_Carcassi_Exercice.pdf'],
+      ['Joseph Küffner', 'Sonatine 1, op. 80', 'MB1'], ['Julio S. Sagreras', 'Lecciones 40–47', 'SAG1'], ['Adrian Le Roy', 'Branle de Poictou', 'REN1'], ['Gaspar Sanz', 'Villano', 1]] },
   { g: 2, t: 'Temel teknik', top: ['Bağlar (vurma ve çekme)', 'Seslerin susturulması', 'Uzanmalar', 'Arpejler', 'Yarım ve tam barre (cejilla)', 'Gamlar ve 3’lü gamlar'],
     ex: ['rh3', 'rh7', 'lh2', 'lh4', 'lh5', 'lh8', 'lh10'], giu: ['II', 'III'],
-    rep: [['Ferdinando Carulli', 'Andantino in G, op. 241'], ['Ferdinando Carulli', 'Arpeggi di tre note, op. 241'], ['Ferdinando Carulli', 'Valse variée in C, op. 241'], ['Fernando Sor', 'Leçon 5, 8, 9, 10, op. 60'], ['Fernando Sor', 'Andante n°1, op. 44'], ['Mauro Giuliani', 'Écossaise 13, op. 24'], ['Dionisio Aguado', 'Lecciones 8a, 8b, 9a'], ['Matteo Carcassi', 'Andante, op. 59'], ['Gaspar Sanz', 'Dance de las hachas'], ['Thoinot Arbeau', 'Pavane']] },
+    rep: [['Fernando Sor', 'Leçon 4, op. 60', 'Fernando_Sor_Lecon_4_op_60.pdf'], ['Fernando Sor', 'Leçon 5, op. 60', 'Fernando_Sor_opus_60_05.pdf'], ['Fernando Sor', 'Leçon 8, op. 60', 'Fernando_Sor_opus_60_08.pdf'],
+      ['Fernando Sor', 'Andante n°1, op. 44', 'MB1'], ['Ferdinando Carulli', 'Valse in A major, op. 241', 'ferdinando_carulli_op_241_Valse_in_a_maj.pdf'], ['Ferdinando Carulli', 'Andantino in G, op. 241', 2],
+      ['Mauro Giuliani', 'Escozzese 4, op. 33', 'mauro_giuliani_op_033_escozzese_4.pdf'], ['Mauro Giuliani', 'Écossaise 13, op. 24', 2], ['Matteo Carcassi', 'Andantino, op. 59', 'matteo_carcassi_op_59_andantino.pdf'],
+      ['Matteo Carcassi', 'Andante, op. 59', 'matteo_carcassi_op_59_andante.pdf'], ['Matteo Carcassi', 'Sauteuse, op. 59', 'matteo_carcassi_op_59_sauteuse.pdf'], ['Gaspar Sanz', 'Dance de las hachas', 2], ['Thoinot Arbeau', 'Pavane', 2]] },
   { g: 3, t: 'Pozisyon ve süsleme', top: ['Akorlar ve arpejler', 'Barre', 'Uzanmalar', 'Gamlar, pozisyon kayması', 'Glissando', 'Legato ve staccato', 'Bağlar', 'Mordent ve trill'],
     ex: ['rh8', 'lh9', 'lh11'], giu: ['IVa', 'IVb'],
-    rep: [['Fernando Sor', 'Exercice 1 ve 2, op. 35'], ['Fernando Sor', 'Leçon 7, 11–14, op. 60'], ['Ferdinando Carulli', 'Prélude 4, op. 114'], ['Matteo Carcassi', 'Allegretto, Marche, Valse, op. 59'], ['Dionisio Aguado', 'Lección 15, 19'], ['Niccolò Paganini', 'Ghiribizzo 1'], ['Joseph Haydn', 'Menuet in C'], ['Anonim', 'Greensleeves']] },
+    rep: [['Fernando Sor', 'Leçon 7, op. 60', 'Fernando_Sor_opus_60_07.pdf'], ['Fernando Sor', 'Exercice 1, op. 35', 3], ['Fernando Sor', 'Exercice 2, op. 35', 3],
+      ['Ferdinando Carulli', 'Allegretto, op. 241', 'ferdinando_carulli_op_241_Allegretto.pdf'], ['Ferdinando Carulli', 'Andante, op. 241', 'ferdinando_carulli_op_241_Andante.pdf'], ['Ferdinando Carulli', 'Arpeggi, op. 241', 'ferdinando_carulli_op_241_Arpeggi.pdf'],
+      ['Ferdinando Carulli', 'Valse en Sol, op. 241', 'ferdinando_carulli_op_241_Valse_sol.pdf'], ['Matteo Carcassi', 'Allegretto, op. 59', 'matteo_carcassi_op_59_allegretto.pdf'], ['Niccolò Paganini', 'Ghiribizzo 1', 3], ['Joseph Haydn', 'Menuet in C', 3], ['Anonim', 'Greensleeves', 3]] },
   { g: 4, t: 'Klasik dönem etütleri', top: ['Daha uzun arpej formülleri', 'Bas ile melodi ayrımı', 'Pozisyonlar arası geçiş', 'Barre’lı akor akışı'],
     ex: ['lh7'], giu: ['Va'],
-    rep: [['Ferdinando Carulli', 'Rondo, op. 241; Prélude 7, op. 114'], ['Fernando Sor', 'Étude 13, 17, 22, op. 35'], ['Fernando Sor', 'Étude 16–22, op. 60'], ['Mauro Giuliani', 'Étude 1, 3, 12, 13, op. 51'], ['Mauro Giuliani', 'Allegretto 5, 17, op. 50'], ['Matteo Carcassi', 'Prélude in A minor, op. 59'], ['Napoléon Coste', 'Barcarolle, op. 51'], ['Johann K. Mertz', 'Übungsstücke'], ['Luys Milán', 'Pavane I, II']] },
+    rep: [['Mauro Giuliani', 'Étude 1, op. 51', 'mauro_giuliani_etude_1_opus_51.pdf'], ['Mauro Giuliani', 'Allegretto 17, op. 50', 'mauro_giuliani_allegretto_17_opus_50.pdf'], ['Mauro Giuliani', 'Le Papillon n°1, op. 50', 'mauro_giuliani_le_papillon_n1_opus_50.pdf'],
+      ['Dionisio Aguado', 'Leçon 56, op. 6', 'dionisio_aguado_lecon_56_opus_6.pdf'], ['Fernando Sor', 'Étude 13, op. 35', 'MB2'], ['Fernando Sor', 'Étude 17, op. 35', 'MB2'], ['Fernando Sor', 'Étude 22, op. 35', 'MB2'],
+      ['Matteo Carcassi', 'Prelude in A minor, op. 59', 'MB2'], ['Napoléon Coste', 'Barcarolle, op. 51', 'MB2'], ['Johann K. Mertz', 'Ländler op. 9 n°4', 'johann_kaspar_mertz_op_09_04.pdf'], ['Luys Milán', 'Pavane I', 4]] },
   { g: 5, t: 'Orta seviye', top: ['Gam hızı (Estudio de Escalas)', 'Bağ zincirleri (Estudio del ligado)', 'Carcassi op. 60 etütleri', 'Rönesans repertuvarı'],
     ex: ['rh9', 'lh12', 'lh13'], giu: ['Vb'],
-    rep: [['Francisco Tárrega', 'Lágrima'], ['Francisco Tárrega', 'Preludio 8, 9; Estudio en si menor'], ['Fernando Sor', 'Exercice op. 35 n°8; Leçon op. 31 n°21'], ['Matteo Carcassi', 'Étude op. 60 n°1, 3, 6, 11'], ['Napoléon Coste', 'Étude 1, 2, op. 38'], ['J. S. Bach', 'Prelude BWV 1007; Sarabande BWV 995'], ['Luys de Narváez', 'Guárdame las vacas'], ['Gaspar Sanz', 'Canarios'], ['Agustín Barrios', 'Estudio del ligado']] },
+    rep: [['Francisco Tárrega', 'Lágrima', 'francisco_tarrega_lagrima.pdf'], ['Francisco Tárrega', 'Preludio 8', 'francisco_tarrega_preludio_8.pdf'], ['Francisco Tárrega', 'Preludio 9', 'francisco_tarrega_preludio_9.pdf'],
+      ['Francisco Tárrega', 'Estudio en si menor', 'francisco_tarrega_estudio_si_minor.pdf'], ['Francisco Tárrega', 'Estudio de Escalas', 'francisco_tarrega_estudio_escalas.pdf'], ['Fernando Sor', 'Exercice op. 35 n°8', 'Fernando_Sor_opus_35_8.pdf'],
+      ['Fernando Sor', 'Leçon op. 31 n°21', 'Fernando_Sor_opus_31_21.pdf'], ['Fernando Sor', 'Leçon op. 60 n°18', 'Fernando_Sor_opus_60_18.pdf'], ['Matteo Carcassi', 'Étude op. 60 n°1', 'matteo_carcassi_op_60_01.pdf'],
+      ['Matteo Carcassi', 'Étude op. 60 n°3', 'matteo_carcassi_op_60_03.pdf'], ['Matteo Carcassi', 'Étude op. 60 n°6', 'matteo_carcassi_op_60_06.pdf'], ['Matteo Carcassi', 'Étude op. 60 n°11', 'matteo_carcassi_op_60_11.pdf'],
+      ['Napoléon Coste', 'Étude 1, op. 38', 'napoleon_coste_op_38_01.pdf'], ['Napoléon Coste', 'Étude 2, op. 38', 'napoleon_coste_op_38_02.pdf'], ['J. S. Bach', 'Prelude BWV 1007', 'johann_sebastian_bach_bwv_1007.pdf'],
+      ['J. S. Bach', 'Sarabande BWV 995', 'johann_sebastian_bach_bwv_995_sarabande.pdf'], ['Luys de Narváez', 'Guárdame las vacas', 'luys_de_narvaez_diferencias_guardame_las_vacas.pdf'], ['Gaspar Sanz', 'Canarios', 'gaspar_sanz_canarios.pdf'],
+      ['Agustín Barrios', 'Estudio del ligado', 'agustin_barrios_mangore_estudio_del_ligado.pdf'], ['Agustín Barrios', 'El sueño de la muñequita', 'agustin_barrios_mangore_el_sueno_de_munequita.pdf'],
+      ['Dionisio Aguado', 'Egercicio 10', 'Dionisio_Aguado_Egercicio_10.pdf'], ['Mauro Giuliani', 'Arpeggi (op. 1)', 'mauro_giuliani_op_001_48.pdf'], ['Johann K. Mertz', 'Ländler op. 12 n°1', 'johann_kaspar_mertz_op_12_01.pdf']] },
   { g: 6, t: 'Orta-ileri', top: ['3’lüler ve 6’lılar', 'Hız etütleri', 'Barok repertuvar', 'Carcassi op. 60 devamı'],
     ex: ['lh8', 'rh9'], giu: ['VIa'],
-    rep: [['J. S. Bach', 'Bourrée, BWV 996'], ['J. S. Bach', 'Sarabande, BWV 1002'], ['Francisco Tárrega', 'Estudio de Terceras; Estudio de Velocidad'], ['Francisco Tárrega', 'Preludio 1, 4; Sueño (Mazurka)'], ['Matteo Carcassi', 'Étude op. 60 n°2, 4, 5, 7'], ['Dionisio Aguado', 'Estudio 15, 29'], ['Mauro Giuliani', 'Sonatine 1, op. 71'], ['Erik Satie', 'Gnossienne 1'], ['Agustín Barrios', 'Preludio en mi']] },
+    rep: [['J. S. Bach', 'Bourrée BWV 996', 'johann_sebastian_bach_bwv_996_bourree.pdf'], ['J. S. Bach', 'Sarabande BWV 1002', 'johann_sebastian_bach_bwv_1002.pdf'], ['Francisco Tárrega', 'Estudio de Terceras', 'francisco_tarrega_estudio_terceras.pdf'],
+      ['Francisco Tárrega', 'Estudio de Velocidad', 'francisco_tarrega_estudio_de_velocita.pdf'], ['Francisco Tárrega', 'Estudio de Damas', 'francisco_tarrega_estudio_damas.pdf'], ['Francisco Tárrega', 'Estudio de Cramer', 'francisco_tarrega_estudio_cramer.pdf'],
+      ['Francisco Tárrega', 'Preludio 1', 'francisco_tarrega_preludio_1.pdf'], ['Francisco Tárrega', 'Preludio 4', 'francisco_tarrega_preludio_4.pdf'], ['Francisco Tárrega', 'Preludio 11', 'francisco_tarrega_preludio_11.pdf'],
+      ['Matteo Carcassi', 'Étude op. 60 n°2', 'matteo_carcassi_op_60_02.pdf'], ['Matteo Carcassi', 'Étude op. 60 n°7', 'matteo_carcassi_op_60_07.pdf'], ['Dionisio Aguado', 'Estudio 15', 'Dionisio_Aguado_Estudio_15.pdf'],
+      ['Dionisio Aguado', 'Estudio 29', 'Dionisio_Aguado_Estudio_29.pdf'], ['Mauro Giuliani', 'Sonatine 1, op. 71', 'mauro_giuliani_op_071_Sonatine.pdf'], ['Fernando Sor', 'Leçon 16, op. 31', 'Fernando_Sor_opus_31_16.pdf'],
+      ['Fernando Sor', 'Leçon 20, op. 31', 'Fernando_Sor_opus_31_20.pdf'], ['Napoléon Coste', 'Étude 20, op. 38', 'napoleon_coste_op_38_20.pdf'], ['Erik Satie', 'Gnossienne 1', 'erik_satie_gnossienne_1.pdf'],
+      ['Agustín Barrios', 'Preludio en mi', 'agustin_barrios_mangore_preludio_e_major.pdf'], ['Agustín Barrios', 'Minueto en do', 'agustin_barrios_mangore_minueto_en_do.pdf'], ['Luys de Narváez', 'Ay, arde corazón, arde', 'luys_de_narvaez_ay_arde_corazon_arde.pdf']] },
   { g: 7, t: 'İleri', top: ['Tárrega’nın arpej etüdü', 'Uzun formlar', 'Romantik repertuvar'],
     ex: ['rh6'], giu: ['VIb'],
-    rep: [['Francisco Tárrega', 'Estudio de Arpegios'], ['Francisco Tárrega', '¡Adelita!; Preludio 2, 5'], ['Fernando Sor', 'Étude op. 6 n°11'], ['J. S. Bach', 'Prélude BWV 999'], ['Matteo Carcassi', 'Étude op. 60 n°12, 20, 22, 24'], ['Miguel Llobet', 'El testament d’Amelia'], ['Erik Satie', 'Gymnopédie 1'], ['Agustín Barrios', 'Villancico de Navidad']] },
+    rep: [['Francisco Tárrega', 'Estudio de Arpegios', 'francisco_tarrega_estudio_arpegios.pdf'], ['Francisco Tárrega', 'Preludio 2', 'francisco_tarrega_preludio_2.pdf'], ['Francisco Tárrega', 'Preludio 5', 'francisco_tarrega_preludio_5.pdf'],
+      ['Francisco Tárrega', 'Preludio 7', 'francisco_tarrega_preludio_7.pdf'], ['Fernando Sor', 'Étude op. 6 n°11', 'Fernando_Sor_opus_06_11.pdf'], ['J. S. Bach', 'Prélude BWV 999', 'johann_sebastian_bach_bwv_999.pdf'],
+      ['Matteo Carcassi', 'Étude op. 60 n°12', 'matteo_carcassi_op_60_12.pdf'], ['Matteo Carcassi', 'Étude op. 60 n°20', 'matteo_carcassi_op_60_20.pdf'], ['Miguel Llobet', 'El testament d’Amelia', 'Miguel_Llobet__El_Testament_d_Amelia_%281900%29.pdf'],
+      ['Miguel Llobet', 'Leonesa', 'Miguel_Llobet__Leonesa.pdf'], ['Erik Satie', 'Gymnopédie 1', 'erik_satie_gymnopedie_1.pdf'], ['Agustín Barrios', 'Villancico de Navidad', 'agustin_barrios_mangore_villancico_de_navidad.pdf'],
+      ['Agustín Barrios', 'Preludio en do menor', 'agustin_barrios_mangore_preludio_do_menor.pdf'], ['Johann K. Mertz', 'Capriccio, op. 13', 'johann_kaspar_mertz_capriccio_3_op_13.pdf'], ['Luys de Narváez', 'Conde claros', 'luys_de_narvaez_conde_claros.pdf']] },
   { g: 8, t: 'Konser repertuvarı', top: ['Tremolo', 'Virtüözite', 'Büyük formlar'],
     ex: ['rh6'], giu: [],
-    rep: [['Francisco Tárrega', 'Capricho Árabe'], ['Francisco Tárrega', 'Recuerdos de la Alhambra'], ['Fernando Sor', 'Variations sur Malbrough, op. 28'], ['Fernando Sor', 'Étude op. 29 n°17'], ['Isaac Albéniz', 'Asturias; Granada'], ['J. S. Bach', 'Courante, Sarabande, Gigue BWV 996'], ['Matteo Carcassi', 'Étude op. 60 n°25'], ['Johann K. Mertz', 'Tarantelle']] }
+    rep: [['Francisco Tárrega', 'Capricho Árabe', 8], ['Francisco Tárrega', 'Recuerdos de la Alhambra', 8], ['Fernando Sor', 'Étude op. 29 n°17', 'Fernando_Sor_opus_29_17.pdf'], ['Fernando Sor', 'Variations sur Malbrough, op. 28', 8],
+      ['Isaac Albéniz', 'Asturias', 'isaac_albeniz_opus47e_asturias.pdf'], ['Isaac Albéniz', 'Granada', 'isaac_albeniz_opus47a_granada.pdf'], ['J. S. Bach', 'Courante, Sarabande, Gigue BWV 996', 8],
+      ['Matteo Carcassi', 'Étude op. 60 n°25', 'matteo_carcassi_op_60_25.pdf'], ['Napoléon Coste', 'Étude 23, op. 38', 'napoleon_coste_etude23_op38.pdf'], ['Johann K. Mertz', 'Tarantelle', 'johann_kaspar_mertz_tarantelle.pdf']] }
 ];
+function repUrl(r) { const f = r[2]; if (typeof f === 'string' && f.endsWith('.pdf')) return { u: PB + f, own: true }; return { u: PB + COLL[f] + '#search=' + encodeURIComponent(r[1].split(',')[0]), own: false }; }
 const RS = ['', 'çalışıyorum', 'öğrendim'];
-const rkey = (g, i) => g + ':' + i;
-function initRep() { if (S.rep) return; S.rep = {}; const set = (g, t, v) => { const d = DG.find(x => x.g === g); const i = d.rep.findIndex(r => r[1].includes(t)); if (i >= 0) S.rep[rkey(g, i)] = v; }; set(5, 'Lágrima', 2); set(6, 'Bourrée', 2); set(8, 'Capricho', 1); G.save(); }
+const rkey = (g, i) => { const d = DG.find(x => x.g === g); return g + ':' + d.rep[i][1]; };
+function initRep() { if (S.rep && S.repV === 2) return; S.rep = {}; S.repV = 2; const set = (g, t, v) => { const d = DG.find(x => x.g === g); const i = d.rep.findIndex(r => r[1].includes(t)); if (i >= 0) S.rep[rkey(g, i)] = v; }; set(5, 'Lágrima', 2); set(6, 'Bourrée', 2); set(8, 'Capricho', 1); G.save(); }
 function gradeProg(d) { const n = d.rep.length; let v = 0; d.rep.forEach((_, i) => { v += (S.rep[rkey(d.g, i)] || 0) / 2; }); return Math.round(v / n * 100); }
 G.screens.klasik = function () {
   initRep();
   const gdone = GD.filter(g => S.giu[g[0]]).length;
   const card = (ic, t, d, attrs) => `<button class="menu" ${attrs}><span class="pic">${ic}</span><span><b>${t}</b><span class="muted">${d}</span></span></button>`;
   const grades = DG.map(d => `<button class="gcard" data-a="go" data-s="grade" data-p='${JSON.stringify({ g: d.g })}'><span class="gn">${d.g}</span><span><b>${d.t}</b><span class="muted">${d.top.slice(0, 3).join(' · ')}</span><span class="bar2 thin"><i style="width:${gradeProg(d)}%"></i></span></span></button>`).join('');
-  return { t: 'Klasik gitar', cat: 'klasik', h: `<div class="intro"><p>Delcamp metodunun seviye sırasıyla teknik, Giuliani’nin 120 arpeji ve repertuvar. Lágrima ve Bourrée çaldığın için 5–6. seviyedesin; alt seviyelerdeki alıştırmalar ısınma ve eksik kapatma için işe yarar.</p></div>
-<h2 class="sec">Alıştırmalar</h2><div class="menus">
+  return { t: 'Klasik gitar', cat: 'klasik', h: `<h2 class="sec">Alıştırmalar</h2><div class="menus">
 ${card(G.icon('arpej'), 'Giuliani 120 arpej', `PDF’indeki seviye sırasıyla ${GD.length} formül; tab, ses ve hız merdiveni. ${gdone} tamamlandı.`, 'data-a="go" data-s="giu"')}
 ${card(G.icon('sarki'), 'Sağ el', 'Apoyando, tel geçişi, a parmağı, tutam, tremolo, hız.', 'data-a="go" data-s="sagel"')}
 ${card(G.icon('sap'), 'Sol el', 'Kromatik permütasyonlar, bağlar, uzanma, gamlar, 3’lüler, barre, trill.', 'data-a="go" data-s="solel"')}
@@ -296,10 +400,10 @@ G.screens.grade = function (p) {
   const d = DG.find(x => x.g === p.g);
   const giuL = d.giu.map(lv => { const items = GD.filter(g => g[1] === lv); const dn = items.filter(g => S.giu[g[0]]).length; return `<button class="chipb" data-a="go" data-s="giu">${GLV[lv][0]} · ${dn}/${items.length}</button>`; }).join('');
   const exs = d.ex.map(id => `<button class="menu exm" data-a="go" data-s="ex" data-p='${JSON.stringify({ id })}'><span class="lvn">${EX[id].h === 'R' ? 'Sağ' : 'Sol'}</span><span><b>${EX[id].n}</b>${S.ex[id] ? `<span class="pill ok">rekor ${S.ex[id]} bpm</span>` : ''}</span></button>`).join('');
-  const rep = d.rep.map((r, i) => { const v = S.rep[rkey(d.g, i)] || 0; return `<button class="rep s${v}" data-a="repset" data-k="${rkey(d.g, i)}"><span><b>${r[1]}</b><span class="muted">${r[0]}</span></span><em>${v ? RS[v] : 'başlamadım'}</em></button>`; }).join('');
+  const rep = d.rep.map((r, i) => { const v = S.rep[rkey(d.g, i)] || 0; const U2 = repUrl(r); return `<div class="rep s${v}"><a href="${U2.u}" target="_blank" rel="noopener"><b>${r[1]}</b><span class="muted">${r[0]} · ${U2.own ? 'PDF ↗' : 'seviye derlemesinde ↗'}</span></a><button class="rs" data-a="repset" data-k="${rkey(d.g, i)}">${v ? RS[v] : 'başlamadım'}</button></div>`; }).join('');
   return { t: `Delcamp ${d.g}. seviye`, cat: 'klasik', h: `<div class="card"><h3>${d.g}. seviye · ${d.t}</h3><div class="chips">${d.top.map(x => `<span class="chip">${x}</span>`).join('')}</div>${giuL ? `<div class="muted">Giuliani karşılığı:</div><div class="chips">${giuL}</div>` : ''}</div>
 <h2 class="sec">Teknik alıştırmalar</h2><div class="menus">${exs}</div>
-<h2 class="sec">Repertuvar</h2><p class="muted">Delcamp derlemesinden seçilmiş parçalar. Dokunarak durumunu değiştir: başlamadım → çalışıyorum → öğrendim.</p><div class="reps">${rep}</div>` };
+<h2 class="sec">Repertuvar</h2><p class="muted">Parça adına dokun: notası açılır. Sağdaki düğme durumunu değiştirir (başlamadım → çalışıyorum → öğrendim). Tek PDF’i olmayan parçalar seviye derlemesinde açılır; tarayıcının arama özelliğiyle parçayı bul.</p><div class="reps">${rep}</div>` };
 };
 G.actions.repset = d => { S.rep[d.k] = ((S.rep[d.k] || 0) + 1) % 3; G.save(); G.rerender(); };
 })();
