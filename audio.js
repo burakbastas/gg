@@ -2,6 +2,23 @@
 'use strict';
 const Aud = {
   ctx: null, cache: {}, out: null, vol: 0.9,
+  unlocked: false,
+  // iOS: sessiz düğmeye takılmamak için medya oturumu + sessiz <audio>; Safari'nin ses kilidini dokunuşta aç
+  unlock() {
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
+    if (!this.el) {
+      const sr = 8000, n = 800, b = new ArrayBuffer(44 + n * 2), v = new DataView(b);
+      const w = (o, t) => { for (let i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)); };
+      w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVE'); w(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+      v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, n * 2, true);
+      const el = document.createElement('audio'); el.setAttribute('playsinline', ''); el.setAttribute('x-webkit-airplay', 'deny'); el.loop = true; el.preload = 'auto';
+      el.src = URL.createObjectURL(new Blob([b], { type: 'audio/wav' })); this.el = el;
+    }
+    try { const pr = this.el.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) {}
+    if (!this.init()) return;
+    try { const bs = this.ctx.createBufferSource(); bs.buffer = this.ctx.createBuffer(1, 1, 22050); bs.connect(this.ctx.destination); bs.start(0); } catch (e) {}
+    if (this.ctx.state === 'running') this.unlocked = true;
+  },
   init() {
     if (!this.ctx) {
       const AC = window.AudioContext || window.webkitAudioContext;
@@ -12,7 +29,7 @@ const Aud = {
       this.out = this.ctx.createGain(); this.out.gain.value = this.vol;
       this.out.connect(comp); comp.connect(this.ctx.destination);
     }
-    if (this.ctx.state === 'suspended') this.ctx.resume();
+    if (this.ctx.state !== 'running' && this.ctx.state !== 'closed') { try { this.ctx.resume(); } catch (e) {} }
     return true;
   },
   now() { return this.ctx ? this.ctx.currentTime : 0; },
@@ -116,5 +133,8 @@ function makeScheduler(stepFn) {
 }
 
 g.Aud = Aud;
+// dokunuşların hepsinde (touchend/click aktivasyon sayılır) kilidi açmayı dene; çalışınca bırak
+['touchend', 'click', 'keydown'].forEach(ev => document.addEventListener(ev, function h() { Aud.unlock(); if (Aud.unlocked) document.removeEventListener(ev, h, true); }, true));
+document.addEventListener('visibilitychange', () => { if (!document.hidden && Aud.ctx && Aud.ctx.state !== 'running') { try { Aud.ctx.resume(); } catch (e) {} } });
 g.makeScheduler = makeScheduler;
 })(window);

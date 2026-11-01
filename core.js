@@ -1,8 +1,9 @@
 (function () {
 'use strict';
 const G = window.G = { screens: {}, actions: {}, tracks: {}, ui: { tseg: 'armoni' } };
-G.VERSION = 9;
+G.VERSION = 10;
 G.CHANGES = [
+  [10, '1 Kasım 2026', 'Telefon ve tablette ses düzeltmesi (iPhone sessiz düğmesi ve ses kilidi); Ayarlar’a ses testi.'],
   [9, '1 Kasım 2026', 'Arpej oynatıcıda sıradaki akorun hangi tellerden çalınacağı gösteriliyor.'],
   [8, '1 Kasım 2026', 'Repertuvardaki tüm parçalar kendi PDF’iyle açılıyor (derleme yerine).'],
   [7, '1 Kasım 2026', 'Sürüm numarası ve değişiklik listesi.'],
@@ -358,10 +359,12 @@ G.screens.ayar = function () {
 <div><div class="card"><h3>Yedek</h3><div class="muted">İlerleme bu cihazın tarayıcısında saklanır. Tarayıcı verisi silinirse kaybolur; ara sıra yedek al. Yedeği başka cihaza yükleyerek ilerlemeni taşıyabilirsin.</div><div class="row g"><button class="btn sm" data-a="exp">Yedeği indir</button><button class="btn sm ghost" data-a="imp">Yedeği yükle</button><input type="file" id="impf" accept=".json,application/json" hidden></div><div class="row g"><button class="btn sm danger" data-a="reset">Her şeyi sıfırla</button></div></div>
 <div class="card"><h3>Telefona kurma</h3><div class="muted">GitHub Pages adresini telefonda aç. iPhone: Paylaş → Ana Ekrana Ekle. Android: menü (⋮) → Ana ekrana ekle / Uygulamayı yükle. Sonra internetsiz de çalışır.</div></div>
 <div class="card"><h3>Sürüm ${G.VERSION}</h3><div class="muted">${G.CHANGES[0][1]}</div><details class="leg"><summary>Değişiklikler</summary>${G.CHANGES.map(c => `<p class="muted"><b>${c[0]}.</b> ${c[2]}</p>`).join('')}</details></div>
+<div class="card"><h3>Ses</h3><div class="muted">Ses gelmiyorsa buradan dene. iPhone’da yan taraftaki sessiz düğmesi kapalıyken de çalması için ayarlandı; yine de gelmezse sesi aç ve ekranı bir kez yenile.</div><div class="row g"><button class="btn sm" data-a="sndtest">▶ Sesi test et</button><span class="muted" id="sndst"></span></div></div>
 <div class="card"><h3>İpuçları</h3><div class="muted">Bilgisayarda soruları klavyeyle çözebilirsin: 1–9 seçenek, Enter devam, R sesi tekrar çalar. Ses gelmezse telefonun sessiz modunu kapat.</div></div></div></div>`,
     after: () => { const f = $('#impf'); if (f) f.onchange = () => { const r = new FileReader(); r.onload = () => { try { const j = JSON.parse(r.result); if (!j || !j.v || !j.set) throw 0; Object.keys(S).forEach(k => delete S[k]); Object.assign(S, migrate(j)); G.save(); alert('Yedek yüklendi.'); G.buildTracks(); applyTheme(); G.rerender(); } catch (e) { alert('Geçersiz yedek dosyası.'); } }; r.readAsText(f.files[0]); }; } };
 };
 G.actions.setnt = d => { S.set.nt = d.v; G.save(); G.buildTracks(); G.rerender(); };
+G.actions.sndtest = () => { Aud.unlock(); if (Aud.ctx) { Aud.strum([-1, 3, 2, 0, 1, 0]); setTimeout(() => { const e = document.querySelector('#sndst'); if (e) e.textContent = 'Ses motoru: ' + ({ running: 'çalışıyor', suspended: 'bekliyor (bir kez daha dokun)', interrupted: 'kesildi', closed: 'kapalı' }[Aud.ctx.state] || Aud.ctx.state); }, 300); } else { const e = document.querySelector('#sndst'); if (e) e.textContent = 'Bu tarayıcı Web Audio desteklemiyor.'; } };
 G.actions.setdg = d => { S.set.dg = d.v; CHM.orient = d.v; G.save(); G.rerender(); };
 G.actions.settheme = d => { S.set.theme = d.v; G.save(); applyTheme(); G.rerender(); };
 G.actions.exp = () => { const b = new Blob([JSON.stringify(S)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'gitar-yedek-' + dayKey() + '.json'; document.body.appendChild(a); a.click(); a.remove(); };
@@ -386,7 +389,6 @@ G.boot = function () {
     const f = G.actions[t.dataset.a]; if (f) f(t.dataset, t, e);
   });
   document.addEventListener('keydown', onKey);
-  document.addEventListener('pointerdown', () => { try { Aud.init(); } catch (e) {} }, { once: true });
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
   const vb = document.querySelector('#ver'); if (vb) vb.textContent = 'Sürüm ' + G.VERSION;
   G.go('home');
