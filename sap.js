@@ -86,7 +86,7 @@ G.FLV = FLV;
 
 G.screens.sap = function () {
   const due = G.dueCount();
-  return { t: 'Sap ezberi', cat: 'sap', h: `<div class="row g" style="margin:0 0 10px">${due ? `<button class="btn sm" data-a="review">Tekrar zamanı (${due})</button>` : ''}<button class="btn sm ghost" data-a="go" data-s="heat">Isı haritası</button></div><p class="muted">Yanlış yaptıkların daha sık, bildiklerin seyrek gelir. İlk 5 perdeyi ve kalın Mi telini biliyorsan o seviyeleri “Zaten biliyorum” ile geçebilirsin.</p><div class="lvgrid">${G.levelList(FLV)}</div>` };
+  return { t: 'Klavye haritası', cat: 'sap', h: `<div class="row g" style="margin:0 0 10px">${due ? `<button class="btn sm" data-a="review">Tekrar zamanı (${due})</button>` : ''}<button class="btn sm ghost" data-a="go" data-s="heat">Isı haritası</button></div><p class="muted">Yanlış yaptıkların daha sık, bildiklerin seyrek gelir. İlk 5 perdeyi ve kalın Mi telini biliyorsan o seviyeleri “Zaten biliyorum” ile geçebilirsin.</p><div class="lvgrid">${G.levelList(FLV)}</div>` };
 };
 G.screens.heat = function () {
   let h = '<p class="muted">Kırmızı: zayıf · turuncu/sarı: öğreniliyor · yeşil: pekişti · boş: henüz görülmedi. Üst satır = ince Mi teli.</p><div class="card"><div class="heat"><span></span>';
@@ -95,7 +95,7 @@ G.screens.heat = function () {
     h += `<span class="h">${6 - s}</span>`;
     for (let f = 0; f <= 12; f++) { const r = S.srs[s + ':' + f]; h += `<span class="c b${r && r.n ? r.box : 0}" title="${M.TRN[M.SHARP[pcAt(s, f)][0]]}${M.SHARP[pcAt(s, f)].length > 1 ? '♯' : ''}">${r && r.n ? G.nnPlain(M.SHARP[pcAt(s, f)]) : ''}</span>`; }
   }
-  return { t: 'Sap ısı haritası', cat: 'sap', h: h + '</div></div>' };
+  return { t: 'Klavye ısı haritası', cat: 'sap', h: h + '</div></div>' };
 };
 G.actions.review = () => {
   const keys = G.dueList();

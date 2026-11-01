@@ -97,7 +97,7 @@ function marksFor(t, side) {
 }
 
 // Akor diyagramı (SVG)
-function diagram(c, o) {
+function diagramV(c, o) {
   o = o || {};
   const fr = c.fr, fg = c.fg || [];
   const pl = fr.filter(x => x > 0);
@@ -146,6 +146,55 @@ function diagram(c, o) {
   return s + '</svg>';
 }
 
+// Yatay şema: ince Mi üstte, kalın Mi altta (sap çizimiyle aynı), eşik solda
+function diagramH(c, o) {
+  o = o || {};
+  const fr = c.fr, fg = c.fg || [];
+  const pl = fr.filter(x => x > 0);
+  const ex = o.extra && o.extra[1] > 0 ? [o.extra[1]] : [];
+  const all = pl.concat(ex);
+  const maxF = all.length ? Math.max.apply(null, all) : 0, minF = all.length ? Math.min.apply(null, all) : 0;
+  const base = maxF > 5 ? minF : 1;
+  const W = 164, H = 112, x0 = 30, dx = 25, y0 = 14, dy = 15, cols = 5;
+  const ys = i => y0 + (5 - i) * dy;
+  const hot = o.hot == null ? [] : [].concat(o.hot);
+  const marks = o.marks || {};
+  const rootPc = o.root === false ? null : (() => { const p = M.chordParse(baseName(c.n)); return p ? M.pcOf(p.bass || p.root) : null; })();
+  let s = `<svg class="dg h${o.cls ? ' ' + o.cls : ''}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="akor şeması">`;
+  for (let k = 0; k <= cols; k++) s += `<line y1="${y0}" y2="${y0 + 5 * dy}" x1="${x0 + k * dx}" x2="${x0 + k * dx}" class="${k === 0 && base === 1 ? 'nut' : 'fl'}"/>`;
+  for (let i = 0; i < 6; i++) s += `<line y1="${ys(i)}" y2="${ys(i)}" x1="${x0}" x2="${x0 + cols * dx}" class="${hot.includes(i) ? 'str hot' : 'str'}"/>`;
+  if (base > 1) s += `<text x="${x0 + dx / 2}" y="${H - 4}" class="bl" text-anchor="middle">${base}</text>`;
+  for (let i = 0; i < 6; i++) {
+    const y = ys(i);
+    if (fr[i] < 0) s += `<text x="${x0 - 12}" y="${y + 4.5}" class="mx" text-anchor="middle">×</text>`;
+    else if (fr[i] === 0) s += `<circle cx="${x0 - 12}" cy="${y}" r="4.2" class="${rootPc != null && (M.OPEN[i] % 12) === rootPc && i === bassIdx(c) ? 'op rt' : 'op'}"/>`;
+  }
+  const byF = {};
+  fr.forEach((f, i) => { if (f > 0 && fg[i] > 0) { (byF[fg[i] + ':' + f] = byF[fg[i] + ':' + f] || []).push(i); } });
+  Object.keys(byF).forEach(k => {
+    const a = byF[k];
+    if (a.length >= 2) {
+      const f = +k.split(':')[1]; const cx = x0 + (f - base + 0.5) * dx;
+      const ya = ys(Math.max.apply(null, a)), yb = ys(Math.min.apply(null, a));
+      if (f - base + 1 >= 1 && f - base + 1 <= cols) s += `<rect x="${cx - 7}" y="${ya - 7}" width="14" height="${yb - ya + 14}" rx="7" class="dot br"/>`;
+    }
+  });
+  for (let i = 0; i < 6; i++) {
+    const f = fr[i];
+    if (f > 0 && f - base + 1 >= 1 && f - base + 1 <= cols) {
+      const cx = x0 + (f - base + 0.5) * dx, cy = ys(i);
+      const mk = marks[i + ':' + f] || '';
+      const isRoot = rootPc != null && (M.OPEN[i] + f) % 12 === rootPc && !mk;
+      s += `<circle cx="${cx}" cy="${cy}" r="7" class="dot ${mk}${isRoot ? ' rt' : ''}"/>`;
+      if (fg[i] > 0) s += `<text x="${cx}" y="${cy + 3.6}" class="fn" text-anchor="middle">${fg[i]}</text>`;
+    }
+  }
+  if (o.extra) { const [es, ef] = o.extra; if (ef > 0 && fr[es] !== ef) s += `<circle cx="${x0 + (ef - base + 0.5) * dx}" cy="${ys(es)}" r="7" class="dot ab"/>`; }
+  return s + '</svg>';
+}
+const CHM_ = { orient: 'h' };
+function diagram(c, o) { return CHM_.orient === 'v' ? diagramV(c, o) : diagramH(c, o); }
+
 // Farklı akorlar arası geçiş grupları (tonlara göre, pop'ta en sık kullanılanlar önce)
 const GROUPS = [
   { id: 'kG', st: 1, name: 'Sol tonu', chords: ['G', 'C', 'D', 'Em'], tip: 'Pop’un en sık tonu. G–C–D–Em ile yüzlerce şarkı çalınır. G’yi 3-2-0-0-0-3 (yüzük-orta-serçe) basarsan C’ye ve Em’e geçişte orta parmak rehber olur.' },
@@ -175,9 +224,25 @@ const PATTERNS = [
   { id: 'a5', name: '3+3+2 · modern', steps: 'p i m P i m P i', unit: 0.5, tip: 'Bas vurguları 1, 4 ve 7. sekizlikte. Akustik pop’ta sinkoplu his.' },
   { id: 'a6', name: 'Melodi + bas · p+a', steps: 'p+a i m i P i m+a i', unit: 0.5, tip: 'Üst telde melodi notası bas ile birlikte (p+a). Melodi + arpej hazırlığı.' },
   { id: 'a10', name: 'Perküsif · p-i-x-i', steps: 'p i x i P i x i', unit: 0.5, tip: 'x: 2. ve 4. vuruşta sağ el ayasıyla tellere hafifçe vur. Arpejle ritim arasında köprü.' },
-  { id: 'a11', name: 'Tutam (pinch) · p+c', steps: 'p+c . i m P+c . i m', unit: 0.5, tip: 'c: i-m-a birlikte, bas ile aynı anda. Dolgun ve vurgulu bir eşlik.' }
+  { id: 'a11', name: 'Tutam (pinch) · p+c', steps: 'p+c . i m P+c . i m', unit: 0.5, tip: 'c: i-m-a birlikte, bas ile aynı anda. Dolgun ve vurgulu bir eşlik.' },
+  { id: 'a12', name: 'Travis · alternatif başparmak', steps: 'p m P i p m P i', unit: 0.5, tip: 'Başparmak kök ve beşli arasında her vuruşta gider, i ve m araya düşer. Akustik pop ve folk eşliğinin temeli.' },
+  { id: 'a13', name: 'Romanza üçlemesi · p+a m i', steps: 'p+a m i a m i a m i', unit: 1 / 3, tip: '3/4 içinde üçlemeler; ilk notada bas ve melodi birlikte. “Romance” tarzı.' },
+  { id: 'a14', name: 'Tremolo · p a m i', steps: 'p a1 m1 i1 P a1 m1 i1', unit: 0.25, tip: 'a-m-i aynı telde (1. tel) tekrar eder, p bası çalar. Recuerdos hazırlığı; yavaş ve eşit başla.' },
+  { id: 'a15', name: '16’lık dalga · p i m a m i m i', steps: 'p i m a m i m i', unit: 0.25, tip: 'Klasik pop baladın akıcı 16’lık arpeji.' },
+  { id: 'a16', name: 'Gidip gelen · p m i m', steps: 'p m i m P m i m', unit: 0.5, tip: 'Orta parmak merkezde; bas her yarımda değişir.' },
+  { id: 'a17', name: 'Kaskad · p a m i', steps: 'p a m i P a m i', unit: 0.5, tip: 'Yukarıdan aşağı akan arpej; ters Giuliani kalıplarına hazırlık.' },
+  { id: 'a18', name: 'Üçlü akış · p i m', steps: 'p i m p i m P i m P i m', unit: 1 / 3, tip: 'Carulli tarzı üçlü arpej; her vuruşta bas.' },
+  { id: 'a19', name: 'Bas melodisi · p i p m', steps: 'p i p4 m P i p4 m', unit: 0.5, tip: 'Başparmak iki ayrı bas teli arasında melodi gibi gezer.' },
+  { id: 'a20', name: 'Tutam + akış · p+m i P+m i', steps: 'p+m i P+m i p+a i P+m i', unit: 0.5, tip: 'Bas ile üst tel birlikte, araya i. Fingerstyle pop.' },
+  { id: 'a21', name: '6/8 vuruşlu · p i m x m i', steps: 'p i m x m i', unit: 0.5, click: [0, 3], tip: '6/8 balad, 4. sekizlikte perküsif vuruş.' },
+  { id: 'r1', name: 'Ritim · dörtlük aşağı (D D D D)', steps: 'D D D D', unit: 1, tip: 'D: aşağı vuruş (başparmak ya da pena). Önce akor değişimini oturtmak için.' },
+  { id: 'r2', name: 'Ritim · pop klasiği (D . D U . U D U)', steps: 'D . D U . U D U', unit: 0.5, tip: 'Pop’un en çok kullanılan vuruşu. El aşağı-yukarı hiç durmadan sallanır; noktalarda tellere değmeden geçer.' },
+  { id: 'r3', name: 'Ritim · sekizlik (D U D U D U D U)', steps: 'D U D U D U D U', unit: 0.5, tip: 'Hareketli şarkılar için düz sekizlik.' },
+  { id: 'r4', name: 'Ritim · 6/8 slow (D . U D U .)', steps: 'D . U D U .', unit: 0.5, click: [0, 3], tip: 'Türkçe slow ve 6/8 parçalar için.' },
+  { id: 'r5', name: 'Ritim · vuruşlu (D . x U . U x U)', steps: 'D . x U . U x U', unit: 0.5, tip: 'x: 2 ve 4’te tellere avuçla vuruş (chunk). Modern akustik pop.' },
+  { id: 'r6', name: 'Ritim · bossa (p . c . c p . c)', steps: 'p . c . c p . c', unit: 0.5, tip: 'Bas ve akor ayrı: başparmak bası, i-m-a birlikte akoru çalar. Senkoplu bossa hissi.' },
 ];
-const TOKRE = /^(p|P|i|m|a|c|x|\.)(\+(p|P|i|m|a|c))*$/;
+const TOKRE = /^([pPimacxDU.]\d?)(\+([pPimac]\d?))*$/;
 function parsePattern(txt) { const t = String(txt).trim().split(/\s+/).filter(Boolean); if (!t.length || t.length > 16) return null; return t.every(x => TOKRE.test(x)) ? t : null; }
 
 const PROGS = [
@@ -203,5 +268,5 @@ const PROGS = [
 ];
 
 g.CHORDS = CHORDS; g.CH = CH; g.FAMS = FAMS; g.GROUPS = GROUPS; g.STAGES = STAGES; g.PATTERNS = PATTERNS; g.PROGS = PROGS;
-g.CHM = { bassIdx, altBass, diagram, transition, marksFor, barreChord, barreFret, SHAPES, getChord, baseName, parsePattern };
+g.CHM = { set orient(v) { CHM_.orient = v; }, get orient() { return CHM_.orient; }, bassIdx, altBass, diagram, transition, marksFor, barreChord, barreFret, SHAPES, getChord, baseName, parsePattern };
 })(typeof window !== 'undefined' ? window : globalThis);

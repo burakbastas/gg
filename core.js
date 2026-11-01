@@ -5,7 +5,7 @@ const $ = s => document.querySelector(s);
 const pick = M.pick;
 
 // ---------- durum ----------
-function defState() { return { v: 2, set: { nt: 'both', theme: 'auto' }, srs: {}, lv: {}, xp: 0, days: {}, pairs: {}, min1: {}, arp: { p: 0, pat: 0, bpm: 70, snd: 'arp' }, songs: null, pats: [], progs: [], seen: {}, flow: {}, slide: { best: {} } }; }
+function defState() { return { v: 2, set: { nt: 'both', theme: 'auto', dg: 'h' }, srs: {}, lv: {}, xp: 0, days: {}, pairs: {}, min1: {}, arp: { p: 0, pat: 0, bpm: 70, snd: 'arp' }, songs: null, pats: [], progs: [], seen: {}, flow: {}, slide: { best: {} }, giu: {}, ex: {}, exo: {}, yol: {} }; }
 function migrate(s) {
   const d = defState(); if (!s || typeof s !== 'object') return d;
   for (const k in d) if (s[k] === undefined) s[k] = d[k];
@@ -44,7 +44,7 @@ G.pcl = pc => M.NAT.includes(pc) ? G.nn(M.SHARP[pc]) : `<span class="sh">${G.nn(
 G.pcInline = pc => M.NAT.includes(pc) ? G.nn(M.SHARP[pc]) : `${G.nn(M.SHARP[pc])} / ${G.nn(M.FLAT[pc])}`;
 
 // ---------- süre takibi ----------
-const CAT = { sap: 'away', teori: 'away', kulak: 'away', makam: 'away', sekil: 'away', gecis: 'guitar', arpej: 'guitar', sarki: 'guitar', akor: 'guitar' };
+const CAT = { sap: 'away', teori: 'away', kulak: 'away', makam: 'away', sekil: 'away', gecis: 'guitar', arpej: 'guitar', sarki: 'guitar', akor: 'guitar', klasik: 'guitar' };
 let cat = null, lastTouch = Date.now(); G.playing = false;
 ['pointerdown', 'keydown', 'touchstart'].forEach(e => addEventListener(e, () => { lastTouch = Date.now(); }, { passive: true }));
 function updTimer() { const d = today(); const el = $('#tmr'); if (el) el.textContent = `${Math.floor((d.away + d.guitar) / 60)}/60 dk`; }
@@ -286,8 +286,8 @@ function onKey(e) {
 // ---------- günlük plan ----------
 const ROT = [['makam', 'Makamlar'], ['kulak', 'Kulak'], ['sekil', 'Akor şekilleri']];
 G.plan = () => { const r = ROT[Math.floor(Date.now() / 864e5) % 3]; return [
-  { k: 'sap', n: 'Sap ezberi', m: 8 }, { k: 'teori', n: 'Armoni teorisi', m: 10 }, { k: r[0], n: r[1], m: 7 },
-  { k: 'gecis', n: 'Akor geçişleri', m: 10, g: 1 }, { k: 'arpej', n: 'Arpej', m: 15, g: 1 }, { k: 'sarki', n: 'Şarkı çalışması', m: 10, g: 1 }]; };
+  { k: 'sap', n: 'Klavye haritası', m: 8 }, { k: 'teori', n: 'Armoni teorisi', m: 10 }, { k: r[0], n: r[1], m: 7 },
+  { k: 'gecis', n: 'Akor geçişleri', m: 8, g: 1 }, (Math.floor(Date.now() / 864e5) % 2 ? { k: 'klasik', n: 'Klasik: Giuliani ve teknik', m: 15, g: 1 } : { k: 'arpej', n: 'Arpej ve ritim', m: 15, g: 1 }), { k: 'sarki', n: 'Kulaktan şarkı çıkarma', m: 12, g: 1 }]; };
 G.actions.plan = d => {
   const k = d.k, nx = t => G.nextOf(G.tracks[t]);
   if (k === 'sap') { if (G.dueCount()) return G.actions.review(); const L = nx('sap'); return L ? G.actions.lv({ id: L.id }) : G.goTab('sap'); }
@@ -295,7 +295,8 @@ G.actions.plan = d => {
   if (k === 'makam') return G.goTab('makam');
   if (k === 'gecis') return G.goTab('akor', 'zincir');
   if (k === 'arpej') return G.goTab('akor', 'arpej');
-  if (k === 'sarki') return G.goTab('akor', 'songs');
+  if (k === 'sarki') return G.goTab('akor', 'asistan');
+  if (k === 'klasik') return G.goTab('klasik');
 };
 
 // ---------- ekranlar ----------
@@ -303,7 +304,7 @@ const ICON = {
   sap: '<path d="M3 7h18M3 12h18M3 17h18M8 5v14M14 5v14"/>', teori: '<path d="M5 4h10a4 4 0 0 1 4 4v12H9a4 4 0 0 1-4-4z"/><path d="M9 8h6M9 12h6"/>',
   makam: '<path d="M4 18c3-8 5-12 8-12s5 4 8 12"/><path d="M8 18v-4M12 18V9M16 18v-4"/>', kulak: '<path d="M8 15a6 6 0 1 1 10-4c0 3-3 4-3 7a3 3 0 0 1-6 0"/>',
   sekil: '<rect x="6" y="3" width="12" height="18" rx="2"/><path d="M6 8h12M6 13h12M10 3v18M14 3v18"/>', gecis: '<path d="M7 7h11l-3-3M17 17H6l3 3"/>',
-  arpej: '<path d="M4 18l4-6 4 3 4-8 4 5"/>', sarki: '<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>'
+  arpej: '<path d="M4 18l4-6 4 3 4-8 4 5"/>', klasik: '<path d="M14 3l5 5M17 5l-6 6"/><path d="M11 11c-2-1-5 0-6 2s0 4 1 5 3 2 5 1 3-4 2-6"/>', yol: '<path d="M4 20c4-2 4-6 8-8s4-6 8-8"/><circle cx="4" cy="20" r="1.5"/><circle cx="20" cy="4" r="1.5"/>', sarki: '<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>'
 };
 G.icon = k => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${ICON[k] || ''}</svg>`;
 G.screens.home = function () {
@@ -315,11 +316,11 @@ G.screens.home = function () {
   });
   const days = []; for (let i = 6; i >= 0; i--) { const x = new Date(); x.setDate(x.getDate() - i); days.push({ k: dayKey(x), l: ['Pz', 'Pt', 'Sa', 'Ça', 'Pe', 'Cu', 'Ct'][x.getDay()] }); }
   const week = days.map(x => { const m = Math.floor(dayTotal(x.k) / 60); return `<div class="wd"><div class="wb"><i style="height:${Math.min(100, m / 60 * 100)}%"></i></div><span>${x.l}</span><em>${m || ''}</em></div>`; }).join('');
-  const TR = [['sap', 'Sap'], ['teori', 'Armoni'], ['makam', 'Makam'], ['kulak', 'Kulak'], ['sekil', 'Akor şekli']];
+  const TR = [['sap', 'Klavye'], ['teori', 'Armoni'], ['makam', 'Makam'], ['kulak', 'Kulak'], ['sekil', 'Akor şekli']];
   const prog = TR.map(t => { const a = G.tracks[t[0]], p = G.passed(a); return `<div class="tp"><span>${t[1]}</span><div class="bar2 thin"><i style="width:${p / a.length * 100}%"></i></div><em>${p}/${a.length}</em></div>`; }).join('');
   const due = G.dueCount();
   return { t: 'Gitar Gelişim', h: `<section class="hero"><div class="hs"><div class="hv">${streak()}</div><div class="hl">gün seri</div></div><div class="hs"><div class="hv">${tot}<small>/60</small></div><div class="hl">bugün (dk)</div></div><div class="hs"><div class="hv">${S.xp}</div><div class="hl">XP</div></div></section>
-${due ? `<button class="banner" data-a="review"><b>Tekrar zamanı:</b> ${due} sap notası seni bekliyor <span>›</span></button>` : ''}
+${due ? `<button class="banner" data-a="review"><b>Tekrar zamanı:</b> ${due} klavye notası seni bekliyor <span>›</span></button>` : ''}
 <div class="two"><div class="card"><h3>Bugünün planı</h3><div class="muted" style="margin-bottom:8px">Gitarsız 25 dk · gitarla 35 dk</div><div class="ptag">Gitar elinde değilken</div>${items.slice(0, 3).join('')}<div class="ptag">Gitar elindeyken</div>${items.slice(3).join('')}</div>
 <div><div class="card"><h3>Son 7 gün</h3><div class="week">${week}</div></div><div class="card"><h3>Seviye ilerlemesi</h3>${prog}</div></div></div>` };
 };
@@ -340,14 +341,15 @@ G.screens.ayar = function () {
   const b = (a, v, cur, l) => `<button class="btn sm ${cur === v ? 'on' : 'ghost'}" data-a="${a}" data-v="${v}">${l}</button>`;
   let seen = 0, mast = 0; Object.keys(S.srs).forEach(k => { if (S.srs[k].n > 0) { seen++; if (S.srs[k].box >= 3) mast++; } });
   return { t: 'Ayarlar', h: `<div class="two"><div><div class="card"><h3>Nota gösterimi</h3><div class="seg">${b('setnt', 'both', S.set.nt, 'Do (C)')}${b('setnt', 'tr', S.set.nt, 'Do Re Mi')}${b('setnt', 'en', S.set.nt, 'C D E')}</div><div class="muted">Önerilen: ikisi yan yana. Akor siteleri C-D-E kullanır.</div></div>
-<div class="card"><h3>Görünüm</h3><div class="seg">${b('settheme', 'auto', S.set.theme, 'Otomatik')}${b('settheme', 'dark', S.set.theme, 'Koyu')}${b('settheme', 'light', S.set.theme, 'Açık')}</div></div>
-<div class="card"><h3>İlerleme</h3><div class="muted">Görülen sap konumu: ${seen} · pekişen: ${mast} · toplam XP: ${S.xp}</div><div class="row g"><button class="btn sm ghost" data-a="go" data-s="heat">Sap ısı haritası</button></div></div></div>
+<div class="card"><h3>Görünüm</h3><div class="seg">${b('settheme', 'auto', S.set.theme, 'Otomatik')}${b('settheme', 'dark', S.set.theme, 'Koyu')}${b('settheme', 'light', S.set.theme, 'Açık')}</div><div class="muted">Akor şeması</div><div class="seg">${b('setdg', 'h', S.set.dg, 'Yatay (klavye gibi)')}${b('setdg', 'v', S.set.dg, 'Dikey (akor kitabı)')}</div></div>
+<div class="card"><h3>İlerleme</h3><div class="muted">Görülen klavye konumu: ${seen} · pekişen: ${mast} · toplam XP: ${S.xp}</div><div class="row g"><button class="btn sm ghost" data-a="go" data-s="heat">Klavye ısı haritası</button></div></div></div>
 <div><div class="card"><h3>Yedek</h3><div class="muted">İlerleme bu cihazın tarayıcısında saklanır. Tarayıcı verisi silinirse kaybolur; ara sıra yedek al. Yedeği başka cihaza yükleyerek ilerlemeni taşıyabilirsin.</div><div class="row g"><button class="btn sm" data-a="exp">Yedeği indir</button><button class="btn sm ghost" data-a="imp">Yedeği yükle</button><input type="file" id="impf" accept=".json,application/json" hidden></div><div class="row g"><button class="btn sm danger" data-a="reset">Her şeyi sıfırla</button></div></div>
 <div class="card"><h3>Telefona kurma</h3><div class="muted">GitHub Pages adresini telefonda aç. iPhone: Paylaş → Ana Ekrana Ekle. Android: menü (⋮) → Ana ekrana ekle / Uygulamayı yükle. Sonra internetsiz de çalışır.</div></div>
 <div class="card"><h3>İpuçları</h3><div class="muted">Bilgisayarda soruları klavyeyle çözebilirsin: 1–9 seçenek, Enter devam, R sesi tekrar çalar. Ses gelmezse telefonun sessiz modunu kapat.</div></div></div></div>`,
     after: () => { const f = $('#impf'); if (f) f.onchange = () => { const r = new FileReader(); r.onload = () => { try { const j = JSON.parse(r.result); if (!j || !j.v || !j.set) throw 0; Object.keys(S).forEach(k => delete S[k]); Object.assign(S, migrate(j)); G.save(); alert('Yedek yüklendi.'); G.buildTracks(); applyTheme(); G.rerender(); } catch (e) { alert('Geçersiz yedek dosyası.'); } }; r.readAsText(f.files[0]); }; } };
 };
 G.actions.setnt = d => { S.set.nt = d.v; G.save(); G.buildTracks(); G.rerender(); };
+G.actions.setdg = d => { S.set.dg = d.v; CHM.orient = d.v; G.save(); G.rerender(); };
 G.actions.settheme = d => { S.set.theme = d.v; G.save(); applyTheme(); G.rerender(); };
 G.actions.exp = () => { const b = new Blob([JSON.stringify(S)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'gitar-yedek-' + dayKey() + '.json'; document.body.appendChild(a); a.click(); a.remove(); };
 G.actions.imp = () => { const f = $('#impf'); if (f) f.click(); };
@@ -356,12 +358,12 @@ G.actions.reset = () => { if (confirm('Tüm ilerleme silinsin mi? Bu geri alına
 G.buildTracks = function () {
   G.regTrack('teori', buildTheory({ nn: G.nn, cn: G.cn, pcl: G.pcl, board: G.board }));
   G.regTrack('makam', G.buildMakam());
-  G.regTrack('kulak', G.buildKulak());
+  G.regTrack('kulak', G.buildKulak().concat(G.kulakExtra ? G.kulakExtra() : []));
   G.regTrack('sekil', G.buildSekil());
   G.regTrack('sap', G.FLV);
 };
 G.boot = function () {
-  applyTheme();
+  applyTheme(); CHM.orient = S.set.dg;
   if (window.matchMedia) { try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme); } catch (e) {} }
   G.buildTracks();
   if (G.initSongs) G.initSongs();

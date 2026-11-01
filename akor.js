@@ -17,7 +17,11 @@ const BARRES = ['F#', 'F#m', 'G#m', 'Ab', 'Bb', 'Bbm', 'B', 'Cm', 'C#m', 'Db', '
 // ---------- menü ----------
 G.screens.akor = function () {
   const card = (ic, t, d, attrs) => `<button class="menu" ${attrs}><span class="pic">${G.icon(ic)}</span><span><b>${t}</b><span class="muted">${d}</span></span></button>`;
-  return { t: 'Akor ve arpej', cat: 'akor', h: `<h2 class="sec">Gitar elindeyken</h2><div class="menus">
+  const yd = Object.values(S.yol || {}).filter(Boolean).length;
+  return { t: 'Akor ve arpej', cat: 'akor', h: `<h2 class="sec">Hedef: kulaktan eşlik</h2><div class="menus">
+${card('yol', '1 yıllık eşlik yolu', `12 ay, 48 hedef: el, kulak ve teori adım adım. ${yd} hedef tamamlandı.`, 'data-a="go" data-s="yol"')}
+${card('kulak', 'Kulaktan çıkarma asistanı', 'Ton sesi, tondaki olası akorlar, melodi notasından akor bulma ve şarkıya kaydetme.', 'data-a="go" data-s="asistan"')}
+</div><h2 class="sec">Gitar elindeyken</h2><div class="menus">
 ${card('gecis', 'Akor geçişleri', 'Tonlara göre pop geçişleri, sapta kaydırarak akor değiştirme, barre aileleri. Metronom ve hız merdiveni.', 'data-a="go" data-s="zincir"')}
 ${card('arpej', 'Arpej atölyesi', 'Akor dizisi üzerinde p-i-m-a kalıpları; kendi desenini yaz.', 'data-a="go" data-s="arpej"')}
 ${card('sarki', 'Şarkılarım', 'Akorları yaz, desen ve tempo seç, eşlik ederken akorlar sırayla aksın.', 'data-a="go" data-s="songs"')}
@@ -336,12 +340,18 @@ G.actions.pplay = () => {
     const mode = S.arp.snd; const hot = []; let extra = null;
     if (mode === 'click' && cs.includes(k)) Aud.click(t, k === 0);
     const play = (s, f, v) => { if (f >= 0) { if (mode === 'arp') Aud.pluck(M.OPEN[s] + f + P.shift, t, v); hot.push(s); } };
-    if (c) st[k].split('+').forEach(tok => {
+    if (c) st[k].split('+').forEach(raw => {
+      const mm = raw.match(/^([pPimacxDU.])(\d)?$/); if (!mm) return; const tok = mm[1], sn = mm[2] ? 6 - +mm[2] : null;
+      if (sn != null && 'pPima'.includes(tok)) { play(sn, c.fr[sn], tok.toLowerCase() === 'p' ? 0.6 : 0.46); return; }
       if (tok === 'p') { const b = CHM.bassIdx(c); play(b, c.fr[b], 0.62); }
       else if (tok === 'P') { const ab = CHM.altBass(c); play(ab[0], ab[1], 0.58); if (c.fr[ab[0]] !== ab[1]) extra = ab; }
       else if (tok === 'i') play(3, c.fr[3], 0.45); else if (tok === 'm') play(4, c.fr[4], 0.45); else if (tok === 'a') play(5, c.fr[5], 0.48);
       else if (tok === 'c') [3, 4, 5].forEach(s => play(s, c.fr[s], 0.4));
       else if (tok === 'x' && mode === 'arp') Aud.slap(t);
+      else if (tok === 'D' || tok === 'U') {
+        const strs = [0, 1, 2, 3, 4, 5].filter(s => c.fr[s] >= 0 && (tok === 'D' || s >= 2));
+        (tok === 'U' ? strs.reverse() : strs).forEach((s, j) => { if (mode === 'arp') Aud.pluck(M.OPEN[s] + c.fr[s] + P.shift, t + j * 0.011, tok === 'D' ? 0.32 : 0.22); hot.push(s); });
+      }
     });
     api.at(t, () => {
       const dgEl = $('#pdg'); if (!dgEl || !c) return;
