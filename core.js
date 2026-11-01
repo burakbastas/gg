@@ -1,8 +1,9 @@
 (function () {
 'use strict';
 const G = window.G = { screens: {}, actions: {}, tracks: {}, ui: { tseg: 'armoni' } };
-G.VERSION = 12;
+G.VERSION = 13;
 G.CHANGES = [
+  [13, '1 Kasım 2026', 'Akort ve metronom modülü: mikrofonla akort (gitar, kromatik, makam/koma), 11 akort düzeni + özel, A4 ayarı, referans ses, kararlılık grafiği; metronom: tap tempo, aksak usuller (5/8, 7/8, 9/8, 10/8), vurgu düzenleme, alt bölüm ve swing, 4 ses, tempo antrenörü, sessiz ölçü, otomatik durma, kayıtlı ayarlar; ekranlar arasında çalmaya devam eder.'],
   [12, '1 Kasım 2026', 'Gerçek naylon gitar sesi; tüm oynatıcılarda sayarak başlama, ±1/±5 tempo ve ölçü döngüsü; 1 dakika geçiş testi; kulakta “notanın tondaki görevi” ve melodi dezesi; klavyede porte ↔ sap; şarkılarda kendi ses dosyanla yavaşlatma ve A–B döngüsü, basitleştirme, sahne görünümü; makamda karar drone’u ve seyir örneği; repertuvarda tempo hedefi ve kendini kaydetme, sıradaki Giuliani formülleri; kısa gün planı.'],
   [11, '1 Kasım 2026', 'Yeni logo ve simgeler; ekranın kenarından kaydırarak geri/ileri (iPhone/iPad ana ekran uygulamasında) ve tarayıcı geri tuşu desteği; telefonda taşan alanlar ve yakınlaştırma sorunu düzeltildi, notalar ekrana sığacak şekilde satırlara bölünüyor; “Kaldığın yerden devam”; armoni dersleri yeniden yazıldı (yarım ses, pop şemaları, modal renkler, karışık tekrar seviyeleri, kendini dene, açık lisanslı kaynaklar).'],
   [10, '1 Kasım 2026', 'Telefon ve tablette ses düzeltmesi (iPhone sessiz düğmesi ve ses kilidi); Ayarlar’a ses testi.'],
@@ -59,7 +60,7 @@ G.pcl = pc => M.NAT.includes(pc) ? G.nn(M.SHARP[pc]) : `<span class="sh">${G.nn(
 G.pcInline = pc => M.NAT.includes(pc) ? G.nn(M.SHARP[pc]) : `${G.nn(M.SHARP[pc])} / ${G.nn(M.FLAT[pc])}`;
 
 // ---------- süre takibi ----------
-const CAT = { sap: 'away', teori: 'away', kulak: 'away', makam: 'away', sekil: 'away', gecis: 'guitar', arpej: 'guitar', sarki: 'guitar', akor: 'guitar', klasik: 'guitar' };
+const CAT = { arac: 'guitar', sap: 'away', teori: 'away', kulak: 'away', makam: 'away', sekil: 'away', gecis: 'guitar', arpej: 'guitar', sarki: 'guitar', akor: 'guitar', klasik: 'guitar' };
 let cat = null, lastTouch = Date.now(); G.playing = false;
 ['pointerdown', 'keydown', 'touchstart'].forEach(e => addEventListener(e, () => { lastTouch = Date.now(); }, { passive: true }));
 const isShort = () => !!(S.short && S.short[dayKey()]);
@@ -111,6 +112,7 @@ G.ci = secFn => ({ countIn: () => S.set.ci === false ? null : { n: 4, sec: secFn
 function stopAll() { stopFns.forEach(f => { try { f(); } catch (e) {} }); stopFns = []; G.playing = false; }
 G.endSession = () => { if (SES) { clearTimeout(SES.timer); clearTimeout(SES.adv); } SES = null; document.body.classList.remove('in-q'); };
 function render(name, p) {
+  if (G.beforeRender) G.beforeRender(name);
   stopAll(); G.endSession();
   const sc = G.screens[name](p || {});
   $('#ttl').textContent = sc.t || '';

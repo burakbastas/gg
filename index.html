@@ -26,11 +26,12 @@
   <button data-a="tab" data-t="makam"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 10v3"/><path d="M6 6v11"/><path d="M10 3v18"/><path d="M14 8v7"/><path d="M18 5v13"/><path d="M22 10v3"/></svg><span>Makam</span></button>
   <button data-a="tab" data-t="akor"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="2.5" width="14" height="19" rx="2"/><path d="M5 7.5h14M5 12.5h14M5 17h14M9.7 2.5v19M14.3 2.5v19"/><circle cx="9.7" cy="10" r="1.6" fill="currentColor"/><circle cx="14.3" cy="14.8" r="1.6" fill="currentColor"/></svg><span>Akor</span></button>
   <button data-a="tab" data-t="klasik"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m11.9 12.1 4.514-4.514"/><path d="M20.1 2.3a1 1 0 0 0-1.4 0l-1.114 1.114A2 2 0 0 0 17 4.828v1.344a2 2 0 0 1-.586 1.414A2 2 0 0 1 17.828 7h1.344a2 2 0 0 0 1.414-.586L21.7 5.3a1 1 0 0 0 0-1.4z"/><path d="m6 16 2 2"/><path d="M8.23 9.85A3 3 0 0 1 11 8a5 5 0 0 1 5 5 3 3 0 0 1-1.85 2.77l-.92.38A2 2 0 0 0 12 18a4 4 0 0 1-4 4 6 6 0 0 1-6-6 4 4 0 0 1 4-4 2 2 0 0 0 1.85-1.23z"/></svg><span>Klasik</span></button>
+  <button data-a="tab" data-t="arac" class="nav-tool"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 2v7a3 3 0 0 0 6 0V2"/><path d="M12 12v10"/><path d="M9 22h6"/></svg><span>Akort</span></button>
   <button data-a="tab" data-t="ayar" class="nav-set"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></svg><span>Ayarlar</span></button>
   <span id="ver" class="ver"></span>
 </nav>
 <div id="shell">
-<header id="hd"><button id="back" data-a="back" hidden aria-label="Geri">‹</button><span id="ttl">Gitar Gelişim</span><span id="tmr" class="pill"></span><button class="gear" data-a="tab" data-t="ayar" aria-label="Ayarlar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></svg></button></header>
+<header id="hd"><button id="back" data-a="back" hidden aria-label="Geri">‹</button><span id="ttl">Gitar Gelişim</span><span id="tmr" class="pill"></span><button class="gear tool" data-a="tab" data-t="arac" aria-label="Akort ve metronom"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 2v7a3 3 0 0 0 6 0V2"/><path d="M12 12v10"/><path d="M9 22h6"/></svg></button><button class="gear" data-a="tab" data-t="ayar" aria-label="Ayarlar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></svg></button></header>
 <main id="app"></main>
 </div>
 <div id="modal" hidden></div>
@@ -45,6 +46,7 @@
 <script src="akor.js"></script>
 <script src="klasik.js"></script>
 <script src="eslik.js"></script>
+<script src="tools.js"></script>
 <script src="main.js"></script>
 </body>
 </html>

@@ -97,6 +97,22 @@ const Aud = {
     o.connect(gn); gn.connect(this.out);
     o.start(t); o.stop(t + 0.06);
   },
+  // metronom vuruşu: lvl 3 = ölçü başı, 2 = grup başı, 1 = vuruş, 0.5 = alt bölüm
+  tick(t, lvl, kind) {
+    if (!this.ctx || !lvl) return; const ctx = this.ctx;
+    const f = { 3: 1760, 2: 1320, 1: 1000, 0.5: 760 }[lvl] || 1000, v = { 3: 0.42, 2: 0.32, 1: 0.24, 0.5: 0.12 }[lvl] || 0.2;
+    const gn = ctx.createGain(); gn.connect(this.out);
+    if (kind === 'wood') {
+      const len = Math.floor(ctx.sampleRate * 0.04), b = ctx.createBuffer(1, len, ctx.sampleRate), d = b.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 6);
+      const s = ctx.createBufferSource(); s.buffer = b; const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = f * 1.3; bp.Q.value = 6;
+      gn.gain.value = v * 4.5; s.connect(bp); bp.connect(gn); s.start(t); return;
+    }
+    const o = ctx.createOscillator(); o.type = kind === 'beep' ? 'square' : kind === 'soft' ? 'sine' : 'triangle'; o.frequency.value = kind === 'soft' ? f * 0.5 : f;
+    const vv = kind === 'beep' ? v * 0.35 : kind === 'soft' ? v * 1.2 : v;
+    gn.gain.setValueAtTime(vv, t); gn.gain.exponentialRampToValueAtTime(0.0008, t + (kind === 'soft' ? 0.09 : 0.05));
+    o.connect(gn); o.start(t); o.stop(t + 0.1);
+  },
   // gövdeye / tellere vuruş (perküsif)
   slap(t) {
     if (!this.ctx) return;
@@ -130,6 +146,7 @@ function makeScheduler(stepFn, opts) {
     at(t, fn) { queue.push({ t, fn }); },
     start() {
       if (!Aud.init()) return;
+      if (!(opts && opts.metro) && window.G && G.metroStop) G.metroStop(); // başka bir oynatıcı başlarken metronomu sustur
       api.running = true; i = 0; queue = [];
       const cfg = opts && opts.countIn ? opts.countIn() : null; ci = cfg && cfg.n ? cfg.n : 0;
       next = Aud.ctx.currentTime + 0.15;
