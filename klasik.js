@@ -400,10 +400,22 @@ G.screens.grade = function (p) {
   const d = DG.find(x => x.g === p.g);
   const giuL = d.giu.map(lv => { const items = GD.filter(g => g[1] === lv); const dn = items.filter(g => S.giu[g[0]]).length; return `<button class="chipb" data-a="go" data-s="giu">${GLV[lv][0]} · ${dn}/${items.length}</button>`; }).join('');
   const exs = d.ex.map(id => `<button class="menu exm" data-a="go" data-s="ex" data-p='${JSON.stringify({ id })}'><span class="lvn">${EX[id].h === 'R' ? 'Sağ' : 'Sol'}</span><span><b>${EX[id].n}</b>${S.ex[id] ? `<span class="pill ok">rekor ${S.ex[id]} bpm</span>` : ''}</span></button>`).join('');
-  const rep = d.rep.map((r, i) => { const v = S.rep[rkey(d.g, i)] || 0; const U2 = repUrl(r); return `<div class="rep s${v}"><a href="${U2.u}" target="_blank" rel="noopener"><b>${r[1]}</b><span class="muted">${r[0]} · ${U2.own ? 'PDF ↗' : 'seviye derlemesinde ↗'}</span></a><button class="rs" data-a="repset" data-k="${rkey(d.g, i)}">${v ? RS[v] : 'başlamadım'}</button></div>`; }).join('');
+  const rep = d.rep.map((r, i) => { const v = S.rep[rkey(d.g, i)] || 0; const U2 = repUrl(r); return `<div class="rep s${v}"><a href="${U2.u}" data-a="pdfopen" data-u="${encodeURIComponent(U2.u)}" data-t="${encodeURIComponent(r[1])}" data-own="${U2.own ? 1 : 0}"><b>${r[1]}</b><span class="muted">${r[0]} · ${U2.own ? 'nota' : 'seviye derlemesinde'}</span></a><button class="rs" data-a="repset" data-k="${rkey(d.g, i)}">${v ? RS[v] : 'başlamadım'}</button></div>`; }).join('');
   return { t: `Delcamp ${d.g}. seviye`, cat: 'klasik', h: `<div class="card"><h3>${d.g}. seviye · ${d.t}</h3><div class="chips">${d.top.map(x => `<span class="chip">${x}</span>`).join('')}</div>${giuL ? `<div class="muted">Giuliani karşılığı:</div><div class="chips">${giuL}</div>` : ''}</div>
 <h2 class="sec">Teknik alıştırmalar</h2><div class="menus">${exs}</div>
-<h2 class="sec">Repertuvar</h2><p class="muted">Parça adına dokun: notası açılır. Sağdaki düğme durumunu değiştirir (başlamadım → çalışıyorum → öğrendim). Tek PDF’i olmayan parçalar seviye derlemesinde açılır; tarayıcının arama özelliğiyle parçayı bul.</p><div class="reps">${rep}</div>` };
+<h2 class="sec">Repertuvar</h2><p class="muted">Parça adına dokun: notası uygulamanın içinde açılır. Sağdaki düğme durumunu değiştirir (başlamadım → çalışıyorum → öğrendim). Tek PDF’i olmayan parçalar seviye derlemesinde açılır; tarayıcının arama özelliğiyle parçayı bul.</p><div class="reps">${rep}</div>` };
 };
+G.actions.pdfopen = (d, el, e) => { if (e) e.preventDefault(); G.go('pdf', { u: decodeURIComponent(d.u), t: decodeURIComponent(d.t), own: d.own === '1' }); };
+G.screens.pdf = function (p) {
+  const mobile = window.matchMedia && matchMedia('(pointer: coarse)').matches;
+  const mode = G.ui.pdfm || (mobile ? 'g' : 'd');
+  const bare = p.u.split('#')[0];
+  const src = mode === 'g' ? 'https://docs.google.com/viewer?embedded=true&url=' + encodeURIComponent(bare) : p.u;
+  return { t: p.t, cat: 'klasik', h: `<div class="pdfbar"><div class="seg sm"><button class="btn sm ${mode === 'd' ? 'on' : 'ghost'}" data-a="pdfm" data-v="d">Doğrudan</button><button class="btn sm ${mode === 'g' ? 'on' : 'ghost'}" data-a="pdfm" data-v="g">Google görüntüleyici</button></div><a class="btn sm ghost" href="${p.u}" target="_blank" rel="noopener">Yeni sekmede ↗</a></div>
+${p.own ? '' : '<p class="muted">Bu parça seviye derlemesinin içinde; görüntüleyicinin arama özelliğiyle (Ctrl+F) parça adını bul.</p>'}
+<div class="pdfv"><iframe src="${src}" title="${p.t}" loading="lazy" allowfullscreen></iframe></div>
+<p class="muted">Sayfa boş kalırsa diğer görüntüleyiciyi dene. Telefonda Google görüntüleyici daha güvenilir çalışır.</p>` };
+};
+G.actions.pdfm = d => { G.ui.pdfm = d.v; G.rerender(); };
 G.actions.repset = d => { S.rep[d.k] = ((S.rep[d.k] || 0) + 1) % 3; G.save(); G.rerender(); };
 })();
