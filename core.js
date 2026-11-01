@@ -1,8 +1,9 @@
 (function () {
 'use strict';
 const G = window.G = { screens: {}, actions: {}, tracks: {}, ui: { tseg: 'armoni' } };
-G.VERSION = 7;
+G.VERSION = 8;
 G.CHANGES = [
+  [8, '1 Kasım 2026', 'Repertuvardaki tüm parçalar kendi PDF’iyle açılıyor (derleme yerine).'],
   [7, '1 Kasım 2026', 'Sürüm numarası ve değişiklik listesi.'],
   [6, '1 Kasım 2026', 'Repertuvar PDF’leri uygulama içinde açılıyor.'],
   [5, '1 Kasım 2026', 'Nota görünümü; repertuvarda PDF bağlantıları; Şarkılarım’a arpejle eserler (Bach, Beethoven, Satie...).'],
