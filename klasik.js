@@ -16,7 +16,7 @@ function tabSvg(cols, o) {
   cols.forEach((c, i) => {
     const x = X0 + i * CW + CW / 2;
     if (c.bar && i > 0) h += `<line x1="${x - CW / 2}" x2="${x - CW / 2}" y1="${ys(5)}" y2="${ys(0)}" class="tbar"/>`;
-    h += `<g class="tc" id="tc${i}"><rect x="${x - CW / 2 + 1}" y="${Y0 - 22}" width="${CW - 2}" height="${5 * SY + 30}" rx="5" class="tcr"/>`;
+    h += `<g class="tc" id="tc${(o.off || 0) + i}"><rect x="${x - CW / 2 + 1}" y="${Y0 - 22}" width="${CW - 2}" height="${5 * SY + 30}" rx="5" class="tcr"/>`;
     if (c.top) h += `<text x="${x}" y="${Y0 - 9}" text-anchor="middle" class="ttop">${c.top}</text>`;
     c.n.forEach(nt => { h += `<rect x="${x - 7}" y="${ys(nt.s) - 7}" width="14" height="14" class="tbg"/><text x="${x}" y="${ys(nt.s) + 4}" text-anchor="middle" class="tf">${nt.f}</text>`; });
     h += '</g>';
@@ -42,7 +42,7 @@ function startTab(cols, onSave) {
     const c = cols[k]; const onBeat = Math.abs(cumBeat[k] - Math.round(cumBeat[k])) < 1e-6;
     if (snd() !== 'off' && onBeat && snd() === 'click') Aud.click(t, k === 0);
     if (snd() === 'arp') c.n.forEach((nt, j) => Aud.pluck(M.OPEN[nt.s] + nt.f, t + j * 0.006, c.n.length > 2 ? 0.34 : 0.5));
-    api.at(t, () => { const p = $('#tc' + (k === 0 ? cols.length - 1 : k - 1)); if (p) p.classList.remove('cur'); const e = $('#tc' + k); if (e) { e.classList.add('cur'); if (k % 8 === 0) e.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' }); } });
+    api.at(t, () => { const p = $('#tc' + (k === 0 ? cols.length - 1 : k - 1)); if (p) p.classList.remove('cur'); const e = $('#tc' + k); if (e) { e.classList.add('cur'); if (k % 8 === 0 || (cols[k].bar)) e.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' }); } });
     return 60 / TP.bpm * c.d;
   });
   tplay.lad = TP.ladder ? { start: TP.bpm, save: top => { onSave(top); } } : null;
@@ -93,7 +93,7 @@ function staffSvg(cols, o) {
   info.forEach((I, i) => {
     const { x, c } = I;
     if (c.bar && i > 0) h += `<line x1="${x - CW / 2}" x2="${x - CW / 2}" y1="${TOP}" y2="${BOT}" class="sbar"/>`;
-    h += `<g class="tc" id="tc${i}"><rect x="${x - CW / 2 + 1}" y="4" width="${CW - 2}" height="${H - 8}" rx="6" class="tcr"/>`;
+    h += `<g class="tc" id="tc${(o.off || 0) + i}"><rect x="${x - CW / 2 + 1}" y="4" width="${CW - 2}" height="${H - 8}" rx="6" class="tcr"/>`;
     if (c.top) h += `<text x="${x}" y="16" text-anchor="middle" class="ttop">${c.top}</text>`;
     const head = (n, dx) => {
       let r = '';
@@ -125,13 +125,29 @@ function staffSvg(cols, o) {
     if (d <= 0.26) h += `<rect x="${xa}" y="${g.top + 6}" width="${xb - xa + 1}" height="3.4" class="beam"/>`;
     if (Math.abs(d - 1 / 3) < 0.01) h += `<text x="${(xa + xb) / 2}" y="${g.top - 4}" text-anchor="middle" class="tup">3</text>`;
   });
-  h += `<line x1="${W - 14}" x2="${W - 14}" y1="${TOP}" y2="${BOT}" class="sbar"/><rect x="${W - 11}" y="${TOP}" width="3.5" height="${BOT - TOP}" class="beam"/>`;
+  h += o.last === false ? `<line x1="${W - 9}" x2="${W - 9}" y1="${TOP}" y2="${BOT}" class="sbar"/>` : `<line x1="${W - 14}" x2="${W - 14}" y1="${TOP}" y2="${BOT}" class="sbar"/><rect x="${W - 11}" y="${TOP}" width="3.5" height="${BOT - TOP}" class="beam"/>`;
   return h + '</svg>';
 }
-function viewH(cols, o) {
-  const v = S.set.view || 'nota';
-  return `<div class="tabwrap">${v === 'tab' ? tabSvg(cols) : staffSvg(cols, o)}</div><div class="seg sm vw"><button class="btn sm ${v === 'nota' ? 'on' : 'ghost'}" data-a="setview" data-v="nota">Nota görünümü</button><button class="btn sm ${v === 'tab' ? 'on' : 'ghost'}" data-a="setview" data-v="tab">Tab görünümü</button></div>`;
+// ekrana sığacak şekilde ölçü sınırlarından satırlara böl (telefonda yatay kaydırma gerekmesin)
+function lineSplit(cols, cw, fixed) {
+  const app = document.querySelector('#app'); let avail = 600;
+  if (app) { const cs = getComputedStyle(app); avail = app.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - 36; }
+  const per = Math.max(6, Math.floor((Math.max(240, avail) - fixed) / cw));
+  const ms0 = []; let st = 0; cols.forEach((c, i) => { if (c.bar && i > 0) { ms0.push([st, i]); st = i; } }); ms0.push([st, cols.length]);
+  // çok uzun ölçüleri vuruş sınırlarından böl
+  const ms = []; ms0.forEach(([a, b]) => { if (b - a <= per) { ms.push([a, b]); return; } let acc = 0, s0 = a, lastCut = a; for (let i = a; i < b; i++) { if (Math.abs(acc - Math.round(acc)) < 1e-6 && i > s0) { if (i - s0 > per && lastCut > s0) { ms.push([s0, lastCut]); s0 = lastCut; } lastCut = i; } acc += cols[i].d; } if (b - s0 > per && lastCut > s0) { ms.push([s0, lastCut]); s0 = lastCut; } ms.push([s0, b]); });
+  const lines = []; let cur = null;
+  ms.forEach(m => { if (cur && m[1] - cur[0] <= per) cur[1] = m[1]; else { cur = [m[0], m[1]]; lines.push(cur); } });
+  return lines;
 }
+function viewH(cols, o) {
+  const v = S.set.view || 'nota'; o = o || {};
+  const lines = v === 'tab' ? lineSplit(cols, 22, 36) : lineSplit(cols, 28, 76);
+  const svgs = lines.map(([a, b], k) => { const sub = cols.slice(a, b); const oo = Object.assign({}, o, { off: a, last: k === lines.length - 1 }); return v === 'tab' ? tabSvg(sub, oo) : staffSvg(sub, oo); }).join('');
+  return `<div class="tabwrap${lines.length > 1 ? ' ml' : ''}">${svgs}</div><div class="seg sm vw"><button class="btn sm ${v === 'nota' ? 'on' : 'ghost'}" data-a="setview" data-v="nota">Nota görünümü</button><button class="btn sm ${v === 'tab' ? 'on' : 'ghost'}" data-a="setview" data-v="tab">Tab görünümü</button></div>`;
+}
+let lastW = innerWidth, rzT = 0;
+addEventListener('resize', () => { clearTimeout(rzT); rzT = setTimeout(() => { if (Math.abs(innerWidth - lastW) > 30 && document.querySelector('.tabwrap') && !(tplay && tplay.running)) { lastW = innerWidth; G.rerender(); } else lastW = innerWidth; }, 250); });
 G.actions.setview = d => { stopTab(false); S.set.view = d.v; G.save(); G.rerender(); };
 G.staffSvg = staffSvg;
 // ================= GIULIANI 120 =================

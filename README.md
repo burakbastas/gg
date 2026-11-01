@@ -18,7 +18,7 @@ Notalar varsayılan olarak "Do (C)" şeklinde yan yana gösterilir; Ayarlar'dan 
 1. GitHub'da bir repo aç (örn. `gitar`).
 2. Bu klasördeki dosyaların hepsini reponun köküne yükle (zip'i değil, içindekileri).
 3. Repo → **Settings → Pages**: Source = *Deploy from a branch*, Branch = `main`, klasör `/ (root)` → Save.
-4. Bir dakika sonra adres: `https://burakbastas.github.io/gg/`
+4. Bir dakika sonra adres: `https://KULLANICIADIN.github.io/gitar/`
 5. Telefonda aç → **Ana ekrana ekle**. İnternetsiz de çalışır.
 
 Güncellemede dosyaları yeniden yüklemen yeterli. Eski sürümden gelen ilerleme korunur.
@@ -32,3 +32,9 @@ Güncellemede dosyaları yeniden yüklemen yeterli. Eski sürümden gelen ilerle
 - İlerleme cihazın tarayıcısında saklanır. **Ayarlar → Yedeği indir** ile yedek al; başka cihaza yükleyerek ilerlemeni taşıyabilirsin.
 - Bilgisayarda sorular klavyeyle çözülebilir: 1–9 seçenek, Enter devam, R sesi tekrar çalar.
 - Makamlar gitarın 12 eşit perdesine en yakın haliyle verilir; koma gerektirenler işaretlidir.
+
+## Kaynaklar ve lisanslar
+
+- Armoni dersleri, şu açık lisanslı kitaplardan yararlanılarak Türkçe ve gitara uyarlanarak yazıldı: [Open Music Theory](https://viva.pressbooks.pub/openmusictheory/) (CC BY-SA 4.0), Robert Hutchinson, [Music Theory for the 21st-Century Classroom](https://musictheory.pugetsound.edu/mt21c/) (GNU FDL), Andre Mount, [Fundamentals, Function, and Form](https://milneopentextbooks.org/fundamentals-function-and-form/) (CC BY 4.0).
+- Simgelerin çoğu [Lucide](https://lucide.dev) (ISC lisansı).
+- Delcamp ve Giuliani parçalarının notaları uygulamaya kopyalanmadı; ücretsiz PDF’lere bağlantı verilir.

@@ -1,8 +1,9 @@
 (function () {
 'use strict';
 const G = window.G = { screens: {}, actions: {}, tracks: {}, ui: { tseg: 'armoni' } };
-G.VERSION = 10;
+G.VERSION = 11;
 G.CHANGES = [
+  [11, '1 Kasım 2026', 'Yeni logo ve simgeler; ekranın kenarından kaydırarak geri/ileri (iPhone/iPad ana ekran uygulamasında) ve tarayıcı geri tuşu desteği; telefonda taşan alanlar ve yakınlaştırma sorunu düzeltildi, notalar ekrana sığacak şekilde satırlara bölünüyor; “Kaldığın yerden devam”; armoni dersleri yeniden yazıldı (yarım ses, pop şemaları, modal renkler, karışık tekrar seviyeleri, kendini dene, açık lisanslı kaynaklar).'],
   [10, '1 Kasım 2026', 'Telefon ve tablette ses düzeltmesi (iPhone sessiz düğmesi ve ses kilidi); Ayarlar’a ses testi.'],
   [9, '1 Kasım 2026', 'Arpej oynatıcıda sıradaki akorun hangi tellerden çalınacağı gösteriliyor.'],
   [8, '1 Kasım 2026', 'Repertuvardaki tüm parçalar kendi PDF’iyle açılıyor (derleme yerine).'],
@@ -96,14 +97,17 @@ G.seenFrac = keys => keys.filter(k => S.srs[k] && S.srs[k].n > 0).length / keys.
 G.dueList = () => { const now = Date.now(); return Object.keys(S.srs).filter(k => S.srs[k].n > 0 && S.srs[k].due <= now && S.srs[k].box < 6); };
 G.dueCount = () => G.dueList().length;
 
-// ---------- yönlendirme ----------
+// ---------- yönlendirme (tarayıcı geçmişiyle bağlı: kaydırma, geri/ileri tuşları) ----------
 let stack = [], stopFns = [];
+const SNAP = {}; let seq = 0, curI = 0, qEntry = false;
+const snap = () => stack.map(x => ({ name: x.name, p: x.p }));
+function hPush() { seq++; SNAP[seq] = snap(); curI = seq; qEntry = false; try { history.pushState({ gg: seq }, ''); } catch (e) {} }
+function hRepl() { SNAP[curI] = snap(); try { history.replaceState({ gg: curI }, ''); } catch (e) {} }
 G.onStop = fn => stopFns.push(fn);
 function stopAll() { stopFns.forEach(f => { try { f(); } catch (e) {} }); stopFns = []; G.playing = false; }
 G.endSession = () => { if (SES) { clearTimeout(SES.timer); clearTimeout(SES.adv); } SES = null; document.body.classList.remove('in-q'); };
-G.go = function (name, p, push) {
+function render(name, p) {
   stopAll(); G.endSession();
-  if (push !== false) stack.push({ name, p });
   const sc = G.screens[name](p || {});
   $('#ttl').textContent = sc.t || '';
   document.title = (sc.t ? sc.t + ' · ' : '') + 'Gitar Gelişim';
@@ -111,24 +115,70 @@ G.go = function (name, p, push) {
   cat = sc.cat || null;
   $('#back').hidden = stack.length < 2;
   const root = stack[0].name;
-  document.querySelectorAll('[data-a=tab]').forEach(b => b.classList.toggle('on', b.dataset.t === root));
+  document.querySelectorAll('[data-a=tab]').forEach(b => { b.classList.toggle('on', b.dataset.t === root); if (b.closest('#nav')) b.setAttribute('aria-current', b.dataset.t === root ? 'page' : 'false'); });
   if (sc.after) sc.after();
-  window.scrollTo(0, 0);
   updTimer();
+  if (stack.length > 1 || !['home', 'ayar'].includes(root)) { S.last = { st: snap(), t: sc.t || '' }; G.save(); }
+}
+G.actions.resume = () => { const l = S.last; if (!l || !l.st || !l.st.length) return; try { stack = l.st.map(x => ({ name: x.name, p: x.p })); hPush(); const t = stack[stack.length - 1]; render(t.name, t.p); window.scrollTo(0, 0); } catch (e) { G.goTab('home'); } };
+G.go = function (name, p, push) {
+  if (push !== false) { stack.push({ name, p }); if (qEntry) { qEntry = false; hRepl(); } else hPush(); }
+  render(name, p); window.scrollTo(0, 0);
 };
-G.rerender = () => { const t = stack[stack.length - 1]; const y = window.scrollY; G.go(t.name, t.p, false); window.scrollTo(0, y); };
-G.replace = (name, p) => { stack[stack.length - 1] = { name, p }; G.go(name, p, false); };
-G.goTab = (tab, sub, p) => { stack = [{ name: tab, p: {} }]; if (sub) G.go(sub, p || {}); else G.go(tab, {}, false); };
+G.rerender = () => { const t = stack[stack.length - 1]; const y = window.scrollY; render(t.name, t.p); window.scrollTo(0, y); };
+G.replace = (name, p) => { stack[stack.length - 1] = { name, p }; hRepl(); render(name, p); window.scrollTo(0, 0); };
+G.goTab = (tab, sub, p) => { stack = [{ name: tab, p: {} }]; if (sub) { hPush(); G.go(sub, p || {}); } else { hPush(); render(tab, {}); window.scrollTo(0, 0); } };
 G.modal = html => { const m = $('#modal'); m.innerHTML = `<div class="box" role="dialog" aria-modal="true">${html}<button class="btn ghost full" style="margin-top:14px" data-a="mclose">Kapat</button></div>`; m.hidden = false; };
 G.actions.mclose = () => { $('#modal').hidden = true; $('#modal').innerHTML = ''; };
-G.actions.tab = d => { stack = []; G.go(d.t); };
-G.actions.back = () => { if (stack.length > 1) { stack.pop(); const t = stack[stack.length - 1]; G.go(t.name, t.p, false); } };
+G.actions.tab = d => { if (stack.length === 1 && stack[0].name === d.t && !SES) { window.scrollTo({ top: 0, behavior: 'smooth' }); return; } G.goTab(d.t); };
+G.actions.back = () => { if (stack.length > 1 || SES) history.back(); };
 G.actions.go = d => G.go(d.s, d.p ? JSON.parse(d.p) : {});
+G.qEntry = () => { if (!qEntry) { hPush(); qEntry = true; } };
+const scrollMem = {};
+addEventListener('popstate', e => {
+  if (!$('#modal').hidden) G.actions.mclose();
+  const i = e.state && e.state.gg, sn = i && SNAP[i];
+  scrollMem[curI] = window.scrollY;
+  if (!sn) { stack = [{ name: 'home', p: {} }]; curI = 0; qEntry = false; render('home', {}); window.scrollTo(0, 0); return; }
+  const wasQ = !!SES; curI = i; qEntry = false;
+  stack = sn.map(x => ({ name: x.name, p: x.p }));
+  const t = stack[stack.length - 1]; render(t.name, t.p);
+  window.scrollTo(0, wasQ ? (scrollMem[i] || 0) : (scrollMem[i] || 0));
+});
+G.initHistory = () => { stack = [{ name: 'home', p: {} }]; seq++; curI = seq; SNAP[seq] = snap(); try { history.replaceState({ gg: seq }, ''); } catch (e) {} render('home', {}); };
+
+// ---------- kenardan kaydırma: ana ekrana eklenmiş uygulamada (tarayıcı kendi hareketini vermediği için) ----------
+(function swipe() {
+  const standalone = navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+  G.standalone = standalone;
+  if (!standalone) return; // Safari/Chrome içinde tarayıcının kendi kenar kaydırması geçmişi kullanır
+  const EDGE = 28; let sx = 0, sy = 0, dir = 0, on = false, dx = 0, ind = null;
+  const app = () => document.querySelector('#shell');
+  addEventListener('touchstart', e => {
+    if (e.touches.length !== 1 || !$('#modal').hidden) return;
+    const t = e.touches[0]; sx = t.clientX; sy = t.clientY; dx = 0;
+    dir = sx < EDGE ? 1 : sx > innerWidth - EDGE ? -1 : 0; on = false;
+  }, { passive: true });
+  addEventListener('touchmove', e => {
+    if (!dir) return; const t = e.touches[0]; const mx = t.clientX - sx, my = t.clientY - sy;
+    if (!on) { if (Math.abs(my) > 14 && Math.abs(my) > Math.abs(mx)) { dir = 0; return; } if (mx * dir > 10) { on = true; if (!ind) { ind = document.createElement('div'); ind.className = 'swind'; document.body.appendChild(ind); } ind.textContent = dir > 0 ? '‹' : '›'; ind.className = 'swind ' + (dir > 0 ? 'l' : 'r'); } else return; }
+    dx = Math.max(0, mx * dir); const k = Math.min(1, dx / 90);
+    const el = app(); if (el) { el.style.transition = 'none'; el.style.transform = `translateX(${dir * Math.min(dx, 120) * 0.35}px)`; }
+    if (ind) { ind.style.opacity = k; ind.classList.toggle('go', k >= 1); }
+  }, { passive: true });
+  addEventListener('touchend', () => {
+    if (!dir || !on) { dir = 0; return; }
+    const el = app(); if (el) { el.style.transition = 'transform .18s ease-out'; el.style.transform = ''; }
+    if (ind) ind.style.opacity = 0;
+    if (dx >= 90) { if (dir > 0) { if (stack.length > 1 || SES) history.back(); } else history.forward(); }
+    dir = 0; on = false;
+  });
+})();
 
 // ---------- seviyeler ----------
 G.regTrack = (key, arr) => { arr.forEach(L => { L.track = key; }); G.tracks[key] = arr; };
 function ls(id) { return S.lv[id] || (S.lv[id] = { hist: [], un: false, ok: false }); }
-function isUnlocked(track, i) { return i === 0 || ls(track[i].id).un || ls(track[i - 1].id).ok || ls(track[i].id).ok; }
+function isUnlocked(track, i) { const st = ls(track[i].id); return i === 0 || st.un || st.ok || st.hist.length > 0 || ls(track[i - 1].id).ok; }
 function accOf(id) { const h = ls(id).hist; return h.length ? Math.round(h.reduce((a, b) => a + b, 0) / h.length * 100) : null; }
 G.nextOf = track => track.find((L, i) => isUnlocked(track, i) && !ls(L.id).ok);
 G.passed = track => track.filter(L => ls(L.id).ok).length;
@@ -162,7 +212,7 @@ G.startSession = function (cfg) {
   SES = { cfg, i: 0, ok: 0, xp: 0, retry: [], q: null, locked: false, picked: new Set(), t0: 0, timer: null, adv: null, streak: 0 };
   cat = cfg.cat || 'teori';
   $('#ttl').textContent = cfg.title || '';
-  document.body.classList.add('in-q');
+  document.body.classList.add('in-q'); $('#back').hidden = false; G.qEntry();
   nextQ();
 };
 function nextQ() {
@@ -238,8 +288,8 @@ function finish() {
   SES.done = true; document.body.classList.remove('in-q');
 };
 G.actions.again = () => { const c = SES.cfg; G.startSession(c); };
-G.actions.exit = () => { G.endSession(); G.rerender(); };
-G.actions.quit = () => { G.endSession(); G.rerender(); };
+G.actions.exit = () => { G.endSession(); if (qEntry) history.back(); else G.rerender(); };
+G.actions.quit = G.actions.exit;
 G.actions.next = () => { if (SES && SES.locked) { clearTimeout(SES.adv); nextQ(); } };
 G.actions.qplay = () => { if (SES && SES.q && SES.q.audio && Aud.init()) SES.q.audio(); };
 G.actions.opt = (d, el) => {
@@ -313,19 +363,27 @@ G.actions.plan = d => {
 };
 
 // ---------- ekranlar ----------
-const ICON = {
-  sap: '<path d="M3 7h18M3 12h18M3 17h18M8 5v14M14 5v14"/>', teori: '<path d="M5 4h10a4 4 0 0 1 4 4v12H9a4 4 0 0 1-4-4z"/><path d="M9 8h6M9 12h6"/>',
-  makam: '<path d="M4 18c3-8 5-12 8-12s5 4 8 12"/><path d="M8 18v-4M12 18V9M16 18v-4"/>', kulak: '<path d="M8 15a6 6 0 1 1 10-4c0 3-3 4-3 7a3 3 0 0 1-6 0"/>',
-  sekil: '<rect x="6" y="3" width="12" height="18" rx="2"/><path d="M6 8h12M6 13h12M10 3v18M14 3v18"/>', gecis: '<path d="M7 7h11l-3-3M17 17H6l3 3"/>',
-  arpej: '<path d="M4 18l4-6 4 3 4-8 4 5"/>', klasik: '<path d="M14 3l5 5M17 5l-6 6"/><path d="M11 11c-2-1-5 0-6 2s0 4 1 5 3 2 5 1 3-4 2-6"/>', yol: '<path d="M4 20c4-2 4-6 8-8s4-6 8-8"/><circle cx="4" cy="20" r="1.5"/><circle cx="20" cy="4" r="1.5"/>', sarki: '<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>'
+const ICON = { // çoğu Lucide (ISC lisansı) — lucide.dev
+  sap: '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 9.7h20M2 14.3h20M8 5v14M14 5v14"/><circle cx="11" cy="12" r="1.3" fill="currentColor"/>',
+  teori: '<path d="M12 5v16"/><path d="M20 19a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-4a5 5 0 0 0-4 2 5 5 0 0 0-4-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4a5 5 0 0 1 4 2 5 5 0 0 1 4-2z"/>',
+  makam: '<path d="M2 10v3"/><path d="M6 6v11"/><path d="M10 3v18"/><path d="M14 8v7"/><path d="M18 5v13"/><path d="M22 10v3"/>',
+  kulak: '<path d="M6 8.5a6.5 6.5 0 1 1 13 0c0 6-6 6-6 10a3.5 3.5 0 1 1-7 0"/><path d="M15 8.5a2.5 2.5 0 0 0-5 0v1a2 2 0 1 1 0 4"/>',
+  sekil: '<rect x="5" y="2.5" width="14" height="19" rx="2"/><path d="M5 7.5h14M5 12.5h14M5 17h14M9.7 2.5v19M14.3 2.5v19"/><circle cx="9.7" cy="10" r="1.6" fill="currentColor"/><circle cx="14.3" cy="14.8" r="1.6" fill="currentColor"/>',
+  gecis: '<path d="m2 9 3-3 3 3"/><path d="M13 18H7a2 2 0 0 1-2-2V6"/><path d="m22 15-3 3-3-3"/><path d="M11 6h6a2 2 0 0 1 2 2v10"/>',
+  arpej: '<path d="M2 16c2 0 2-8 4-8s2 8 4 8 2-8 4-8 2 8 4 8 2-4 4-4"/>',
+  klasik: '<path d="m11.9 12.1 4.514-4.514"/><path d="M20.1 2.3a1 1 0 0 0-1.4 0l-1.114 1.114A2 2 0 0 0 17 4.828v1.344a2 2 0 0 1-.586 1.414A2 2 0 0 1 17.828 7h1.344a2 2 0 0 0 1.414-.586L21.7 5.3a1 1 0 0 0 0-1.4z"/><path d="m6 16 2 2"/><path d="M8.23 9.85A3 3 0 0 1 11 8a5 5 0 0 1 5 5 3 3 0 0 1-1.85 2.77l-.92.38A2 2 0 0 0 12 18a4 4 0 0 1-4 4 6 6 0 0 1-6-6 4 4 0 0 1 4-4 2 2 0 0 0 1.85-1.23z"/>',
+  yol: '<circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/><circle cx="18" cy="5" r="3"/>',
+  sarki: '<path d="M16 5H3"/><path d="M11 12H3"/><path d="M11 19H3"/><path d="M21 16V5"/><circle cx="18" cy="16" r="3"/>'
 };
 G.icon = k => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${ICON[k] || ''}</svg>`;
 G.screens.home = function () {
   const d = today(); const plan = G.plan();
   const tot = Math.floor((d.away + d.guitar) / 60);
-  const items = plan.map(it => {
+  let firstOpen = -1;
+  const items = plan.map((it, ix) => {
     const v = Math.floor(((d.sub || {})[it.k] || 0) / 60), done = v >= it.m;
-    return `<div class="pi ${done ? 'done' : ''}"><span class="pic">${G.icon(it.k)}</span><div class="pit"><div class="row"><b>${it.n}</b><span class="muted">${v}/${it.m} dk</span></div><div class="bar2 thin ${done ? 'gr' : ''}"><i style="width:${Math.min(100, v / it.m * 100)}%"></i></div></div><button class="btn sm ${done ? 'ghost' : ''}" data-a="plan" data-k="${it.k}">${done ? '✓' : 'Başla'}</button></div>`;
+    if (!done && firstOpen < 0) firstOpen = ix;
+    return `<div class="pi ${done ? 'done' : ''} ${firstOpen === ix ? 'nx' : ''}"><span class="pic">${G.icon(it.k)}</span><div class="pit"><div class="row"><b>${it.n}</b><span class="muted">${v}/${it.m} dk</span></div><div class="bar2 thin ${done ? 'gr' : ''}"><i style="width:${Math.min(100, v / it.m * 100)}%"></i></div></div><button class="btn sm ${done || firstOpen !== ix ? 'ghost' : ''}" data-a="plan" data-k="${it.k}" aria-label="${it.n}: ${done ? 'tamamlandı, tekrar aç' : 'başla'}">${done ? '✓' : 'Başla'}</button></div>`;
   });
   const days = []; for (let i = 6; i >= 0; i--) { const x = new Date(); x.setDate(x.getDate() - i); days.push({ k: dayKey(x), l: ['Pz', 'Pt', 'Sa', 'Ça', 'Pe', 'Cu', 'Ct'][x.getDay()] }); }
   const week = days.map(x => { const m = Math.floor(dayTotal(x.k) / 60); return `<div class="wd"><div class="wb"><i style="height:${Math.min(100, m / 60 * 100)}%"></i></div><span>${x.l}</span><em>${m || ''}</em></div>`; }).join('');
@@ -333,6 +391,7 @@ G.screens.home = function () {
   const prog = TR.map(t => { const a = G.tracks[t[0]], p = G.passed(a); return `<div class="tp"><span>${t[1]}</span><div class="bar2 thin"><i style="width:${p / a.length * 100}%"></i></div><em>${p}/${a.length}</em></div>`; }).join('');
   const due = G.dueCount();
   return { t: 'Gitar Gelişim', h: `<section class="hero"><div class="hs"><div class="hv">${streak()}</div><div class="hl">gün seri</div></div><div class="hs"><div class="hv">${tot}<small>/60</small></div><div class="hl">bugün (dk)</div></div><div class="hs"><div class="hv">${S.xp}</div><div class="hl">XP</div></div></section>
+${S.last && S.last.t && S.last.t !== 'Gitar Gelişim' ? `<button class="resume" data-a="resume"><span class="muted">Kaldığın yerden devam</span><b>${S.last.t}</b><span class="ra">›</span></button>` : ''}
 ${due ? `<button class="banner" data-a="review"><b>Tekrar zamanı:</b> ${due} klavye notası seni bekliyor <span>›</span></button>` : ''}
 <div class="two"><div class="card"><h3>Bugünün planı</h3><div class="muted" style="margin-bottom:8px">Gitarsız 25 dk · gitarla 35 dk</div><div class="ptag">Gitar elinde değilken</div>${items.slice(0, 3).join('')}<div class="ptag">Gitar elindeyken</div>${items.slice(3).join('')}</div>
 <div><div class="card"><h3>Son 7 gün</h3><div class="week">${week}</div></div><div class="card"><h3>Seviye ilerlemesi</h3>${prog}</div></div></div><p class="muted center" style="margin-top:8px"><button class="btn sm link" data-a="tab" data-t="ayar">Sürüm ${G.VERSION}</button></p>` };
@@ -341,7 +400,9 @@ G.screens.teori = function () {
   const sg = G.ui.tseg;
   const seg = `<div class="seg"><button class="btn sm ${sg === 'armoni' ? 'on' : 'ghost'}" data-a="tseg" data-v="armoni">Armoni</button><button class="btn sm ${sg === 'kulak' ? 'on' : 'ghost'}" data-a="tseg" data-v="kulak">Kulak</button></div>`;
   const intro = sg === 'armoni' ? 'Gitar elinde yokken. Her seviyenin bir konu anlatımı var; son 15 cevabın 14’ü doğru olunca sonraki açılır.' : 'Kulaklıkla çalış. Sesler gitar tınısıyla sentezlenir; her soru otomatik çalar.';
-  return { t: sg === 'armoni' ? 'Armoni teorisi' : 'Kulak eğitimi', h: `${seg}<p class="muted">${intro}</p><div class="lvgrid">${G.levelList(G.tracks[sg === 'armoni' ? 'teori' : 'kulak'])}</div>` };
+  const src = sg === 'armoni' && window.theorySources && theorySources();
+  const srcCard = src ? `<details class="card srcs"><summary><b>Kaynaklar</b> <span class="muted">· derslerin dayandığı açık lisanslı kitaplar</span></summary><p class="muted">Konu sırası ve anlatımlar aşağıdaki ücretsiz, açık lisanslı ders kitaplarından yararlanılarak Türkçe ve gitara uyarlanarak yazıldı. Her dersin sonunda ilgili bölümün bağlantısı var.</p><ul class="srcl"><li><a href="https://viva.pressbooks.pub/openmusictheory/" target="_blank" rel="noopener">Open Music Theory</a> (Gotham, Gullings, Hamm, Hughes, Jarvis, Lavengood, Peterson) · CC BY-SA 4.0 · pop şemaları ve modal kalıplar</li><li><a href="https://musictheory.pugetsound.edu/mt21c/" target="_blank" rel="noopener">Music Theory for the 21st-Century Classroom</a> (Robert Hutchinson) · GNU FDL · temel bilgiler, akorlar, kadanslar, ikincil dominant, ödünç akor</li><li><a href="https://milneopentextbooks.org/fundamentals-function-and-form/" target="_blank" rel="noopener">Fundamentals, Function, and Form</a> (Andre Mount) · CC BY 4.0 · fonksiyonel armoni</li></ul><p class="muted">Ders yapısı: kısa “neden”, anlatım, çözümlü örnek, “kendini dene” (önce düşün, sonra cevaba dokun), gitarda uygulama, özet. Sorular kolay tonlarla başlar ve sen ilerledikçe zorlaşır; ara ara karışık tekrar seviyeleri gelir.</p></details>` : '';
+  return { t: sg === 'armoni' ? 'Armoni teorisi' : 'Kulak eğitimi', h: `${seg}<p class="muted">${intro}</p><div class="lvgrid">${G.levelList(G.tracks[sg === 'armoni' ? 'teori' : 'kulak'])}</div>${srcCard}` };
 };
 G.actions.tseg = d => { G.ui.tseg = d.v; G.rerender(); };
 function applyTheme() {
@@ -372,7 +433,7 @@ G.actions.imp = () => { const f = $('#impf'); if (f) f.click(); };
 G.actions.reset = () => { if (confirm('Tüm ilerleme silinsin mi? Bu geri alınamaz.')) { Object.keys(S).forEach(k => delete S[k]); Object.assign(S, defState()); G.save(); G.initSongs && G.initSongs(); G.rerender(); } };
 
 G.buildTracks = function () {
-  G.regTrack('teori', buildTheory({ nn: G.nn, cn: G.cn, pcl: G.pcl, board: G.board }));
+  G.regTrack('teori', buildTheory({ nn: G.nn, cn: G.cn, pcl: G.pcl, pcInline: G.pcInline, board: G.board, tries: id => (S.lv[id] ? S.lv[id].hist.length : 0) }));
   G.regTrack('makam', G.buildMakam());
   G.regTrack('kulak', G.buildKulak().concat(G.kulakExtra ? G.kulakExtra() : []));
   G.regTrack('sekil', G.buildSekil());
@@ -391,7 +452,7 @@ G.boot = function () {
   document.addEventListener('keydown', onKey);
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
   const vb = document.querySelector('#ver'); if (vb) vb.textContent = 'Sürüm ' + G.VERSION;
-  G.go('home');
+  G.initHistory();
   if (S.ver && S.ver < G.VERSION) { const c = G.CHANGES.filter(x => x[0] > S.ver); G.modal(`<h3>Yeni sürüm: ${G.VERSION}</h3>${c.map(x => `<p><b>${x[0]}.</b> ${x[2]}</p>`).join('')}`); }
   S.ver = G.VERSION; G.save();
 };
