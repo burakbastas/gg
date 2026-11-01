@@ -53,38 +53,65 @@ function yin(buf, sr) {
 }
 
 // ================= AKORT ALETİ =================
-const TU = { on: false, stream: null, src: null, an: null, raf: 0, buf: null, hist: [], med: [], last: null, err: '', refOsc: null, refStr: -1, lastProc: 0 };
-async function tunerStart() {
-  if (TU.on) return; if (!Aud.init()) { TU.err = 'Bu tarayıcı ses işleyemiyor.'; drawTuner(); return; }
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { TU.err = 'Bu tarayıcı mikrofona erişemiyor. Güncel Safari veya Chrome kullan.'; drawTuner(); return; }
-  try {
-    TU.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
-  } catch (e) { TU.err = 'Mikrofon izni verilmedi. Tarayıcı ayarlarından bu siteye mikrofon izni ver ve tekrar dene.'; drawTuner(); return; }
-  const ctx = Aud.ctx; try { if (ctx.state !== 'running') await ctx.resume(); } catch (e) {}
-  TU.src = ctx.createMediaStreamSource(TU.stream); TU.an = ctx.createAnalyser(); TU.an.fftSize = 4096; TU.src.connect(TU.an);
-  TU.buf = new Float32Array(TU.an.fftSize); TU.ds = new Float32Array(TU.an.fftSize >> 1); TU.on = true; TU.err = ''; TU.hist = []; TU.med = []; TU.last = null;
-  wakeOn(); loop(); drawTuner();
+const TU = { on: false, stream: null, src: null, an: null, ctx: null, raf: 0, buf: null, hist: [], med: [], last: null, err: '', refOsc: null, refStr: -1, lastProc: 0, lvl: 0, quiet: 0, starting: false };
+// iPhone/iPad: sessiz düğmeyi aşmak için ses oturumu "playback" ayarlıydı; bu modda mikrofon SESSİZ kalır.
+// Akort sırasında "play-and-record"a geçilir, kapanınca geri alınır.
+function sessionMode(m) { Aud.mic = m === 'play-and-record'; try { if (Aud.mic && Aud.el) Aud.el.pause(); } catch (e) {} try { if (navigator.audioSession) navigator.audioSession.type = m; } catch (e) {} if (!Aud.mic && Aud.el) { try { const p = Aud.el.play(); if (p && p.catch) p.catch(() => {}); } catch (e) {} } }
+G.micMode = sessionMode;
+// Dokunuşun içinde (await'ten önce) çağrılmalı: iOS ses bağlamını ancak kullanıcı hareketiyle başlatır.
+function tunerStart() {
+  if (TU.on || TU.starting) return;
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { TU.err = window.isSecureContext === false ? 'Mikrofon yalnızca güvenli (https) adreste çalışır.' : 'Bu tarayıcı mikrofona erişemiyor. Güncel Safari veya Chrome kullan.'; drawTuner(); return; }
+  const AC = window.AudioContext || window.webkitAudioContext; if (!AC) { TU.err = 'Bu tarayıcı ses işleyemiyor.'; drawTuner(); return; }
+  TU.starting = true; TU.err = ''; sessionMode('play-and-record');
+  let ctx; try { ctx = new AC(); } catch (e) { TU.starting = false; TU.err = 'Ses bağlamı açılamadı: ' + e.message; drawTuner(); return; }
+  TU.ctx = ctx; try { const r = ctx.resume(); if (r && r.catch) r.catch(() => {}); } catch (e) {}
+  const st = $('#tst'); if (st) st.textContent = 'Mikrofon açılıyor…';
+  navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }, video: false })
+    .catch(() => navigator.mediaDevices.getUserMedia({ audio: true })) // bazı cihazlar kısıtları kabul etmez
+    .then(stream => {
+      if (!TU.starting) { stream.getTracks().forEach(t => t.stop()); return; }
+      TU.stream = stream; TU.src = ctx.createMediaStreamSource(stream); TU.an = ctx.createAnalyser(); TU.an.fftSize = 4096; TU.an.smoothingTimeConstant = 0; TU.src.connect(TU.an);
+      TU.buf = new Float32Array(TU.an.fftSize); TU.bbuf = TU.an.getFloatTimeDomainData ? null : new Uint8Array(TU.an.fftSize); TU.ds = new Float32Array(TU.an.fftSize >> 1);
+      stream.getAudioTracks().forEach(t => { t.onended = () => { if (TU.on) { tunerStop(); TU.err = 'Mikrofon başka bir uygulama tarafından kapatıldı. Tekrar aç.'; drawTuner(); } }; });
+      if (ctx.state !== 'running') { try { ctx.resume(); } catch (e) {} }
+      TU.on = true; TU.starting = false; TU.hist = []; TU.med = []; TU.last = null; TU.quiet = 0;
+      wakeOn(); loop(); drawTuner();
+    })
+    .catch(e => {
+      TU.starting = false; sessionMode('playback'); try { ctx.close(); } catch (x) {} TU.ctx = null;
+      const n = e && e.name;
+      TU.err = n === 'NotAllowedError' || n === 'SecurityError' ? 'Mikrofon izni yok. iPhone: Ayarlar → Safari → Mikrofon (veya adres çubuğundaki “aA” → Web Sitesi Ayarları) → İzin Ver. Android: adres çubuğundaki kilit simgesi → İzinler → Mikrofon.'
+        : n === 'NotFoundError' ? 'Mikrofon bulunamadı.' : n === 'NotReadableError' ? 'Mikrofon başka bir uygulama tarafından kullanılıyor (arama, ses kaydı). Onu kapatıp tekrar dene.' : 'Mikrofon açılamadı: ' + (e && (e.message || n) || 'bilinmeyen hata');
+      drawTuner();
+    });
 }
 function tunerStop() {
-  TU.on = false; cancelAnimationFrame(TU.raf);
+  TU.on = false; TU.starting = false; cancelAnimationFrame(TU.raf);
   try { if (TU.src) TU.src.disconnect(); } catch (e) {} if (TU.stream) TU.stream.getTracks().forEach(t => t.stop());
-  TU.stream = TU.src = TU.an = null; TU.last = null; refOff(); wakeOff(); drawTuner();
+  try { if (TU.ctx) TU.ctx.close(); } catch (e) {}
+  TU.stream = TU.src = TU.an = TU.ctx = null; TU.last = null; TU.lvl = 0; refOff(); wakeOff(); sessionMode('playback'); drawTuner();
 }
 G.tunerStop = tunerStop;
 function loop() {
   if (!TU.on) return; TU.raf = requestAnimationFrame(loop);
   const now = performance.now(); if (now - TU.lastProc < 45) return; TU.lastProc = now;
-  TU.an.getFloatTimeDomainData(TU.buf);
-  let rms = 0; for (let i = 0; i < TU.buf.length; i++) rms += TU.buf[i] * TU.buf[i]; rms = Math.sqrt(rms / TU.buf.length);
+  const ctx = TU.ctx; if (ctx.state !== 'running') { try { ctx.resume(); } catch (e) {} }
+  if (TU.bbuf) { TU.an.getByteTimeDomainData(TU.bbuf); for (let i = 0; i < TU.bbuf.length; i++) TU.buf[i] = (TU.bbuf[i] - 128) / 128; }
+  else TU.an.getFloatTimeDomainData(TU.buf);
+  let rms = 0, mean = 0; for (let i = 0; i < TU.buf.length; i++) mean += TU.buf[i]; mean /= TU.buf.length;
+  for (let i = 0; i < TU.buf.length; i++) { const x = TU.buf[i] - mean; rms += x * x; } rms = Math.sqrt(rms / TU.buf.length);
+  TU.lvl = TU.lvl * 0.7 + Math.min(1, rms * 12) * 0.3;
+  TU.quiet = rms < 0.0006 ? TU.quiet + 1 : 0;
   // metronom tıkı mikrofona girdiyse o kareyi atla
-  const nearClick = MT.running && MT.lastTick && Aud.ctx.currentTime - MT.lastTick < 0.09;
+  const nearClick = MT.running && MT.lastTick && Aud.ctx && Aud.ctx.currentTime - MT.lastTick < 0.09;
   let res = null;
-  if (rms > 0.006 && !nearClick) {
-    for (let i = 0; i < TU.ds.length; i++) TU.ds[i] = (TU.buf[2 * i] + TU.buf[2 * i + 1]) * 0.5;
-    res = yin(TU.ds, Aud.ctx.sampleRate / 2);
+  if (rms > 0.0015 && !nearClick) {
+    for (let i = 0; i < TU.ds.length; i++) TU.ds[i] = (TU.buf[2 * i] + TU.buf[2 * i + 1]) * 0.5 - mean;
+    res = yin(TU.ds, ctx.sampleRate / 2);
   }
   const T = tst();
-  if (res && res.f > 50 && res.f < 1400 && res.q > 0.6) {
+  if (res && res.f > 50 && res.f < 1400 && res.q > 0.55) {
     TU.med.push(res.f); if (TU.med.length > 5) TU.med.shift();
     const f = TU.med.slice().sort((a, b) => a - b)[TU.med.length >> 1];
     const mf = 69 + 12 * Math.log2(f / T.a4);
@@ -107,6 +134,8 @@ function paint() {
   const L = TU.last, T = tst();
   const nd = $('#tnote'), ne = $('#tneedle'), hz = $('#thz'), cs = $('#tcents'), box = $('#tbox');
   if (!nd) return;
+  const lv = $('#tlvl'); if (lv) lv.style.width = Math.round((TU.on ? TU.lvl : 0) * 100) + '%';
+  const st = $('#tst'); if (st) st.textContent = !TU.on ? '' : TU.ctx && TU.ctx.state !== 'running' ? 'Ses motoru beklemede: ekrana bir kez dokun.' : TU.quiet > 60 ? 'Mikrofondan ses gelmiyor. Telefonun mikrofonunu kapatan bir şey olmadığından emin ol (kulaklık, Bluetooth).' : `Mikrofon açık · ${TU.ctx ? Math.round(TU.ctx.sampleRate / 1000) : '?'} kHz`;
   if (!L) { nd.innerHTML = TU.on ? '<span class="muted">Bir tel çal</span>' : '—'; hz.textContent = TU.on ? 'dinleniyor…' : ''; cs.textContent = ''; box.className = 'tbox'; ema = null; if (ne) ne.setAttribute('transform', 'rotate(0 160 150)'); drawHist(); markStr(-1); return; }
   const c = Math.max(-50, Math.min(50, L.cents)); ema = ema == null ? c : ema * 0.6 + c * 0.4;
   ne.setAttribute('transform', `rotate(${ema * 1.4} 160 150)`);
@@ -238,6 +267,7 @@ ${[-50, -40, -30, -20, -10, 0, 10, 20, 30, 40, 50].map(c => { const a = (c * 1.4
 <text x="34" y="166" class="tlab">−50</text><text x="286" y="166" class="tlab" text-anchor="end">+50</text><text x="160" y="14" class="tlab" text-anchor="middle">0</text>
 <g id="tneedle"><line x1="160" y1="150" x2="160" y2="34" class="tnd"/><circle cx="160" cy="150" r="7" class="tnc"/></g></svg>
 <div class="tread"><div id="tnote" class="tnote">—</div><div id="tcents" class="tcents"></div><div id="thz" class="muted thz"></div></div></div>
+<div class="tlv" aria-hidden="true"><i id="tlvl"></i></div><div class="muted tst" id="tst"></div>
 <canvas id="thist" class="thist" aria-hidden="true"></canvas>
 <button class="btn full big" id="tgo" data-a="tgo">${TU.on ? '■ Akort aletini kapat' : 'Akort aletini aç'}</button><p class="err" id="terr">${esc(TU.err)}</p>
 ${T.mode === 'gtr' ? `<div class="row" style="margin-top:6px"><select id="ttun" aria-label="akort düzeni">${TUNINGS.map(x => `<option value="${x[0]}" ${x[0] === T.tun ? 'selected' : ''}>${x[1]}</option>`).join('')}</select></div>

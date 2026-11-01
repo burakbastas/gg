@@ -1,8 +1,9 @@
 (function () {
 'use strict';
 const G = window.G = { screens: {}, actions: {}, tracks: {}, ui: { tseg: 'armoni' } };
-G.VERSION = 13;
+G.VERSION = 14;
 G.CHANGES = [
+  [14, '2 Kasım 2026', 'Akort aleti telefonda çalışmıyordu: iPhone’da ses oturumu mikrofonu susturuyordu, ses motoru izin sonrası başlamıyordu. Düzeltildi; mikrofon seviye göstergesi ve anlaşılır hata mesajları eklendi. Repertuvar kaydı da aynı nedenle iPhone’da sessiz kalabiliyordu, düzeltildi. Tüm ekranlar ve düğmeler test edildi; küçük hatalar giderildi.'],
   [13, '1 Kasım 2026', 'Akort ve metronom modülü: mikrofonla akort (gitar, kromatik, makam/koma), 11 akort düzeni + özel, A4 ayarı, referans ses, kararlılık grafiği; metronom: tap tempo, aksak usuller (5/8, 7/8, 9/8, 10/8), vurgu düzenleme, alt bölüm ve swing, 4 ses, tempo antrenörü, sessiz ölçü, otomatik durma, kayıtlı ayarlar; ekranlar arasında çalmaya devam eder.'],
   [12, '1 Kasım 2026', 'Gerçek naylon gitar sesi; tüm oynatıcılarda sayarak başlama, ±1/±5 tempo ve ölçü döngüsü; 1 dakika geçiş testi; kulakta “notanın tondaki görevi” ve melodi dezesi; klavyede porte ↔ sap; şarkılarda kendi ses dosyanla yavaşlatma ve A–B döngüsü, basitleştirme, sahne görünümü; makamda karar drone’u ve seyir örneği; repertuvarda tempo hedefi ve kendini kaydetme, sıradaki Giuliani formülleri; kısa gün planı.'],
   [11, '1 Kasım 2026', 'Yeni logo ve simgeler; ekranın kenarından kaydırarak geri/ileri (iPhone/iPad ana ekran uygulamasında) ve tarayıcı geri tuşu desteği; telefonda taşan alanlar ve yakınlaştırma sorunu düzeltildi, notalar ekrana sığacak şekilde satırlara bölünüyor; “Kaldığın yerden devam”; armoni dersleri yeniden yazıldı (yarım ses, pop şemaları, modal renkler, karışık tekrar seviyeleri, kendini dene, açık lisanslı kaynaklar).'],

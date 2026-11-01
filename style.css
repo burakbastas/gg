@@ -674,3 +674,6 @@ select.inl{display:inline-block;width:auto;margin:0;padding:6px 8px}
 .tstr b{font-size:16px}
 .tstr small{font-size:10px}
 .mbig b small{display:block;font-size:12px;font-weight:600;color:var(--mu);opacity:1;margin:0}
+.tlv{height:6px;border-radius:3px;background:var(--surf2);overflow:hidden;margin:2px 0 4px}
+.tlv i{display:block;height:100%;width:0;background:var(--gr);transition:width .08s}
+.tst{font-size:12.5px;min-height:18px;margin-bottom:6px}

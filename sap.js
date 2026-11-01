@@ -59,7 +59,7 @@ const staffOne = (s, f) => G.staffSvg([{ n: [{ s, f }], d: 1 }], { last: true, n
 function rangeOf(L) { return L && L.pos === 5 ? [5, 9] : [0, 4]; }
 function staffQ(s, f, key, L) {
   const [lo, hi] = rangeOf(L), m = midiAt(s, f);
-  const all = []; for (let x = 0; x < 6; x++) for (let y = lo; y <= hi; y++) if (y >= 0 && midiAt(x, y) === m) all.push(x + ':' + y);
+  const all = [s + ':' + f]; for (let x = 0; x < 6; x++) for (let y = lo; y <= hi; y++) if (y >= 0 && midiAt(x, y) === m && !(x === s && y === f)) all.push(x + ':' + y);
   if (Math.random() < 0.5) {
     const pool = []; for (let x = 0; x < 6; x++) for (let y = lo; y <= hi; y++) if (M.NAT.includes(midiAt(x, y) % 12) && Math.abs(midiAt(x, y) - m) <= 5 && midiAt(x, y) !== m) pool.push(x + ':' + y);
     const opts = [s + ':' + f].concat(M.shuffle(pool).slice(0, 3));

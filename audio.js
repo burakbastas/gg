@@ -8,7 +8,7 @@ const Aud = {
   unlocked: false,
   // iOS: sessiz düğmeye takılmamak için medya oturumu + sessiz <audio>; Safari'nin ses kilidini dokunuşta aç
   unlock() {
-    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
+    try { if (navigator.audioSession && !Aud.mic) navigator.audioSession.type = 'playback'; } catch (e) {}
     if (!this.el) {
       const sr = 8000, n = 800, b = new ArrayBuffer(44 + n * 2), v = new DataView(b);
       const w = (o, t) => { for (let i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)); };
@@ -17,7 +17,7 @@ const Aud = {
       const el = document.createElement('audio'); el.setAttribute('playsinline', ''); el.setAttribute('x-webkit-airplay', 'deny'); el.loop = true; el.preload = 'auto';
       el.src = URL.createObjectURL(new Blob([b], { type: 'audio/wav' })); this.el = el;
     }
-    try { const pr = this.el.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) {}
+    if (!this.mic) { try { const pr = this.el.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) {} }
     if (!this.init()) return;
     try { const bs = this.ctx.createBufferSource(); bs.buffer = this.ctx.createBuffer(1, 1, 22050); bs.connect(this.ctx.destination); bs.start(0); } catch (e) {}
     if (this.ctx.state === 'running') this.unlocked = true;

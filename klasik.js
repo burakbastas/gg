@@ -39,13 +39,13 @@ function startTab(cols, onSave) {
   const cumBeat = []; let acc = 0; cols.forEach(c => { cumBeat.push(acc); acc += c.d; });
   const ms = measures(cols);
   tplay = makeScheduler((i, t, api) => {
-    const R = TP.lp ? [ms[TP.lp[0]][0], ms[TP.lp[1]][1]] : [0, cols.length], len = R[1] - R[0];
+    const okLp = TP.lp && ms[TP.lp[0]] && ms[TP.lp[1]]; const R = okLp ? [ms[TP.lp[0]][0], ms[TP.lp[1]][1]] : [0, cols.length], len = Math.max(1, R[1] - R[0]);
     const k = R[0] + i % len; if (i % len === 0 && i > 0) { lap++; if (TP.ladder && lap % 2 === 0) { TP.bpm = Math.min(200, TP.bpm + 4); api.at(t, () => { const r = $('#tbpm'); if (r) { r.value = TP.bpm; $('#tbpmv').textContent = TP.bpm + ' bpm'; } }); } }
-    const c = cols[k]; const onBeat = Math.abs(cumBeat[k] - Math.round(cumBeat[k])) < 1e-6;
+    const c = cols[k]; if (!c) return 60 / TP.bpm; const onBeat = Math.abs(cumBeat[k] - Math.round(cumBeat[k])) < 1e-6;
     if (snd() !== 'off' && onBeat && snd() === 'click') Aud.click(t, k === 0);
     if (snd() === 'arp') c.n.forEach((nt, j) => Aud.pluck(M.OPEN[nt.s] + nt.f, t + j * 0.006, c.n.length > 2 ? 0.34 : 0.5));
     api.at(t, () => { document.querySelectorAll('.tc.cur').forEach(p => p.classList.remove('cur')); const e = $('#tc' + k); if (e) { e.classList.add('cur'); if (k % 8 === 0 || (cols[k].bar)) e.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' }); } });
-    return 60 / TP.bpm * c.d;
+    return 60 / TP.bpm * (c ? c.d : 1);
   }, G.ci(() => 60 / TP.bpm));
   tplay.lad = TP.ladder ? { start: TP.bpm, save: top => { onSave(top); } } : null;
   tplay.start();
@@ -265,6 +265,7 @@ G.screens.giu = function () {
 G.actions.giuupto = d => { const k = GORD.indexOf(d.no); if (!confirm(lab(d.no) + ' dahil önceki tüm formüller tamamlandı sayılsın mı?')) return; GORD.slice(0, k + 1).forEach(no => { if (!S.giu[no]) S.giu[no] = { bpm: 0, d: G.dayKey() }; }); S.giuMark = d.no; G.save(); G.rerender(); };
 G.actions.giuno = () => { S.giuAsked = 1; G.save(); G.rerender(); };
 G.screens.giud = function (p) {
+  if (!GD.find(x => x[0] === p.no)) p = { no: GD[0][0] };
   const g = GD.find(x => x[0] === p.no), i = GORD.indexOf(p.no); const P = giuParse(g); const cols = giuCols(g);
   CUR = { cols, save: bpm => { const r = S.giu[g[0]] || {}; S.giu[g[0]] = { bpm: Math.max(r.bpm || 0, bpm), d: G.dayKey() }; S.giuMark = g[0]; S.xp += 10; G.save(); } };
   const prev = GORD[i - 1], next = GORD[i + 1];
@@ -480,11 +481,12 @@ G.actions.recgo = async d => {
   const k = d.k, b = $('#recb'), st = $('#recs');
   if (REC && REC.mr && REC.mr.state === 'recording') { recStop(); return; }
   if (!navigator.mediaDevices || !window.MediaRecorder) { st.textContent = 'Bu tarayıcı kayıt yapamıyor.'; return; }
-  let stream; try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } }); } catch (e) { st.textContent = 'Mikrofon izni verilmedi.'; return; }
+  if (G.micMode) G.micMode('play-and-record');
+  let stream; try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } }); } catch (e) { if (G.micMode) G.micMode('playback'); st.textContent = 'Mikrofon izni verilmedi.'; return; }
   const chunks = []; const mr = new MediaRecorder(stream); const t0 = Date.now(); REC = { mr };
   mr.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
   mr.onstop = async () => {
-    stream.getTracks().forEach(t => t.stop()); clearInterval(REC && REC.iv);
+    stream.getTracks().forEach(t => t.stop()); clearInterval(REC && REC.iv); if (G.micMode) G.micMode('playback');
     const blob = new Blob(chunks, { type: mr.mimeType || 'audio/webm' }); const x = repD(k); const ts = Date.now();
     try { await G.IDB.put('rec:' + k + ':' + ts, blob); x.recs.push({ t: ts, d: G.dayKey(), bpm: x.cur || 0 }); G._modalDirty = true; while (x.recs.length > 5) { const o = x.recs.shift(); try { await G.IDB.del('rec:' + k + ':' + o.t); } catch (e) {} } G.save(); } catch (e) { const s2 = $('#recs'); if (s2) s2.textContent = 'Kayıt saklanamadı.'; }
     const bb = $('#recb'); if (bb) bb.textContent = '● Kaydı başlat'; const s3 = $('#recs'); if (s3) s3.textContent = 'Kaydedildi.'; REC = null; recList(k);
