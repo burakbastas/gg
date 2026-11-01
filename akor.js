@@ -314,7 +314,7 @@ function playerHtml(bars, pat, bpm, opt) {
   const snd = S.arp.snd;
   const sb = (v, l) => `<button class="btn sm ${snd === v ? 'on' : 'ghost'}" data-a="psnd" data-v="${v}">${l}</button>`;
   return `<div class="player"><div class="pchips" id="pchips">${bars.map((c, i) => `<span class="chip" id="pc${i}">${cn(c)}</span>`).join('')}</div>
-<div class="pmain"><div class="pnow"><div class="muted">Şimdi</div><b id="pname">${cn(bars[0])}</b><div id="pdg">${c0 ? dg(c0, { cls: 'lg' }) : ''}</div></div><div class="pnext"><div class="muted">Sıradaki</div><b id="pnn">${cn(bars[1 % bars.length])}</b><div id="pndg">${gc(bars[1 % bars.length]) ? dg(gc(bars[1 % bars.length])) : ''}</div></div></div>
+<div class="pmain"><div class="pnow"><div class="muted">Şimdi</div><b id="pname">${cn(bars[0])}</b><div id="pdg">${c0 ? dg(c0, { cls: 'lg', use: patUse(c0, pat).strs }) + `<div class="pus">${patUse(c0, pat).h}</div>` : ''}</div></div><div class="pnext"><div class="muted">Sıradaki</div><b id="pnn">${cn(bars[1 % bars.length])}</b><div id="pndg">${(() => { const nc = gc(bars[1 % bars.length]); const u = patUse(nc, pat); return nc ? dg(nc, { use: u.strs }) + `<div class="pus">${u.h}</div>` : ''; })()}</div></div></div>
 <div class="ptok" id="ptok">${toks(pat).map((t, i) => `<span class="tok" id="tk${i}">${t}</span>`).join('')}</div>
 <div id="phint" class="hint">Hazır</div>
 <div class="row"><span>Tempo</span><b id="pbpmv">${bpm} bpm</b></div><input type="range" id="pbpm" min="40" max="140" value="${bpm}" aria-label="tempo">
@@ -323,6 +323,23 @@ ${opt.kapo ? `<p class="muted">Kapo ${opt.kapo}. perde: şekiller ${opt.kapo} ya
 <button class="btn full big" id="pplay" data-a="pplay">▶ Başla</button></div>`;
 }
 let PSTATE = null;
+// desenin bu akorda hangi telleri kullandığı (p = kök bas, P = alternatif bas)
+function patUse(c, pat) {
+  if (!c) return { strs: [], h: '' };
+  const strs = new Set(), map = {};
+  toks(pat).forEach(st => st.split('+').forEach(raw => {
+    const mm = raw.match(/^([pPimacxDU.])(\d)?$/); if (!mm) return; const t = mm[1];
+    let ss = [];
+    if (mm[2] && 'pPima'.includes(t)) ss = [6 - +mm[2]];
+    else if (t === 'p') ss = [CHM.bassIdx(c)]; else if (t === 'P') ss = [CHM.altBass(c)[0]];
+    else if (t === 'i') ss = [3]; else if (t === 'm') ss = [4]; else if (t === 'a') ss = [5]; else if (t === 'c') ss = [3, 4, 5];
+    else if (t === 'D' || t === 'U') ss = [0, 1, 2, 3, 4, 5].filter(x => c.fr[x] >= 0 && (t === 'D' || x >= 2));
+    ss.filter(x => c.fr[x] >= 0 || t === 'P').forEach(x => { strs.add(x); if ('pPima'.includes(t)) { map[t] = map[t] || new Set(); map[t].add(6 - x); } });
+  }));
+  const nm = { p: 'bas', P: '2. bas', i: 'i', m: 'm', a: 'a' };
+  const h = ['p', 'P', 'i', 'm', 'a'].filter(k => map[k]).map(k => `<span class="pu${k === 'p' || k === 'P' ? ' b' : ''}">${nm[k]} <b>${[...map[k]].join('/')}</b></span>`).join('');
+  return { strs: [...strs], h };
+}
 G.actions.psnd = d => { S.arp.snd = d.v; G.save(); document.querySelectorAll('[data-a=psnd]').forEach(b => { const on = b.dataset.v === d.v; b.classList.toggle('on', on); b.classList.toggle('ghost', !on); }); };
 function bindPlayer(bars, pat, bpmRef, shift) {
   PSTATE = { bars, pat, bpmRef, shift: shift || 0 };
@@ -355,14 +372,14 @@ G.actions.pplay = () => {
     });
     api.at(t, () => {
       const dgEl = $('#pdg'); if (!dgEl || !c) return;
-      dgEl.innerHTML = dg(c, { cls: 'lg', hot, extra });
+      const cu = patUse(c, P.pat); dgEl.innerHTML = dg(c, { cls: 'lg', hot, extra, use: cu.strs }) + `<div class="pus">${cu.h}</div>`;
       document.querySelectorAll('.tok').forEach((e, j) => e.classList.toggle('cur', j === k));
       if (bi !== lastBar) {
         lastBar = bi;
         document.querySelectorAll('#pchips .chip').forEach((e, j) => e.classList.toggle('cur', j === bi));
         const cur = $('#pc' + bi); if (cur && P.bars.length > 8) cur.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
         $('#pname').innerHTML = cn(P.bars[bi]); $('#pnn').innerHTML = cn(nxtName);
-        const nc = gc(nxtName); $('#pndg').innerHTML = nc ? dg(nc) : '';
+        const nc = gc(nxtName); const nu = patUse(nc, P.pat); $('#pndg').innerHTML = nc ? dg(nc, { use: nu.strs }) + `<div class="pus">${nu.h}</div>` : '';
       }
       const prep = k >= n - Math.max(1, Math.round(n / 4));
       const h = $('#phint'); h.classList.toggle('prep', prep);

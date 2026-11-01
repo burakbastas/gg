@@ -113,7 +113,7 @@ function diagramV(c, o) {
   const rootPc = o.root === false ? null : (() => { const p = M.chordParse(baseName(c.n)); return p ? M.pcOf(p.bass || p.root) : null; })();
   let s = `<svg class="dg${o.cls ? ' ' + o.cls : ''}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="akor şeması">`;
   for (let r = 0; r <= rows; r++) s += `<line x1="${x0}" x2="${x0 + 5 * dx}" y1="${y0 + r * dy}" y2="${y0 + r * dy}" class="${r === 0 && base === 1 ? 'nut' : 'fl'}"/>`;
-  for (let i = 0; i < 6; i++) s += `<line x1="${x0 + i * dx}" x2="${x0 + i * dx}" y1="${y0}" y2="${y0 + rows * dy}" class="${hot.includes(i) ? 'str hot' : 'str'}"/>`;
+  for (let i = 0; i < 6; i++) s += `<line x1="${x0 + i * dx}" x2="${x0 + i * dx}" y1="${y0}" y2="${y0 + rows * dy}" class="${hot.includes(i) ? 'str hot' : (o.use && o.use.includes(i) ? 'str use' : 'str')}"/>`;
   if (base > 1) s += `<text x="${x0 - 6}" y="${y0 + dy / 2 + 4}" class="bl" text-anchor="end">${base}</text>`;
   for (let i = 0; i < 6; i++) {
     const x = x0 + i * dx;
@@ -164,7 +164,7 @@ function diagramH(c, o) {
   const rootPc = o.root === false ? null : (() => { const p = M.chordParse(baseName(c.n)); return p ? M.pcOf(p.bass || p.root) : null; })();
   let s = `<svg class="dg h${o.cls ? ' ' + o.cls : ''}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="akor şeması">`;
   for (let k = 0; k <= cols; k++) s += `<line y1="${y0}" y2="${y0 + 5 * dy}" x1="${x0 + k * dx}" x2="${x0 + k * dx}" class="${k === 0 && base === 1 ? 'nut' : 'fl'}"/>`;
-  for (let i = 0; i < 6; i++) s += `<line y1="${ys(i)}" y2="${ys(i)}" x1="${x0}" x2="${x0 + cols * dx}" class="${hot.includes(i) ? 'str hot' : 'str'}"/>`;
+  for (let i = 0; i < 6; i++) s += `<line y1="${ys(i)}" y2="${ys(i)}" x1="${x0}" x2="${x0 + cols * dx}" class="${hot.includes(i) ? 'str hot' : (o.use && o.use.includes(i) ? 'str use' : 'str')}"/>`;
   if (base > 1) s += `<text x="${x0 + dx / 2}" y="${H - 4}" class="bl" text-anchor="middle">${base}</text>`;
   for (let i = 0; i < 6; i++) {
     const y = ys(i);

@@ -498,3 +498,12 @@ svg.staff .tc.cur .nh{fill:var(--ac)}
 @media (max-width:759px){.pdfv{height:calc(100vh - 240px)}}
 #nav .ver{display:none}
 @media (min-width:760px){#nav .ver{display:block;text-align:center;font-size:11px;color:var(--mu);margin-top:6px}}
+
+svg.dg .str.use{stroke:var(--ac);stroke-width:2;opacity:.55}
+.pus{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;margin-top:6px}
+.pu{font-size:12px;background:var(--surf2);border-radius:8px;padding:3px 7px;color:var(--mu);font-weight:600}
+.pu b{color:var(--tx)}
+.pu.b{background:var(--ac-soft);color:var(--ac)}
+.pu.b b{color:var(--ac)}
+.pnext svg.dg.h{max-width:180px}
+.pnext{opacity:1}

@@ -1,8 +1,9 @@
 (function () {
 'use strict';
 const G = window.G = { screens: {}, actions: {}, tracks: {}, ui: { tseg: 'armoni' } };
-G.VERSION = 8;
+G.VERSION = 9;
 G.CHANGES = [
+  [9, '1 Kasım 2026', 'Arpej oynatıcıda sıradaki akorun hangi tellerden çalınacağı gösteriliyor.'],
   [8, '1 Kasım 2026', 'Repertuvardaki tüm parçalar kendi PDF’iyle açılıyor (derleme yerine).'],
   [7, '1 Kasım 2026', 'Sürüm numarası ve değişiklik listesi.'],
   [6, '1 Kasım 2026', 'Repertuvar PDF’leri uygulama içinde açılıyor.'],
