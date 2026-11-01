@@ -1,6 +1,16 @@
 (function () {
 'use strict';
 const G = window.G = { screens: {}, actions: {}, tracks: {}, ui: { tseg: 'armoni' } };
+G.VERSION = 7;
+G.CHANGES = [
+  [7, '1 Kasım 2026', 'Sürüm numarası ve değişiklik listesi.'],
+  [6, '1 Kasım 2026', 'Repertuvar PDF’leri uygulama içinde açılıyor.'],
+  [5, '1 Kasım 2026', 'Nota görünümü; repertuvarda PDF bağlantıları; Şarkılarım’a arpejle eserler (Bach, Beethoven, Satie...).'],
+  [4, '1 Kasım 2026', 'Klasik bölüm (Delcamp seviyeleri, Giuliani 120, sağ/sol el); 1 yıllık eşlik yolu ve kulaktan çıkarma asistanı; yatay akor şemaları.'],
+  [3, '1 Kasım 2026', 'Kaydırma antrenörü, ton gruplarına göre geçişler, Barış Manço şarkıları, yeni soru tipleri.'],
+  [2, '1 Kasım 2026', 'Makamlar, kulak eğitimi, konu anlatımları, telefon/tablet/bilgisayar tasarımı.'],
+  [1, '1 Kasım 2026', 'İlk sürüm: klavye ezberi, armoni, akor geçişleri, arpej.']
+];
 const $ = s => document.querySelector(s);
 const pick = M.pick;
 
@@ -322,7 +332,7 @@ G.screens.home = function () {
   return { t: 'Gitar Gelişim', h: `<section class="hero"><div class="hs"><div class="hv">${streak()}</div><div class="hl">gün seri</div></div><div class="hs"><div class="hv">${tot}<small>/60</small></div><div class="hl">bugün (dk)</div></div><div class="hs"><div class="hv">${S.xp}</div><div class="hl">XP</div></div></section>
 ${due ? `<button class="banner" data-a="review"><b>Tekrar zamanı:</b> ${due} klavye notası seni bekliyor <span>›</span></button>` : ''}
 <div class="two"><div class="card"><h3>Bugünün planı</h3><div class="muted" style="margin-bottom:8px">Gitarsız 25 dk · gitarla 35 dk</div><div class="ptag">Gitar elinde değilken</div>${items.slice(0, 3).join('')}<div class="ptag">Gitar elindeyken</div>${items.slice(3).join('')}</div>
-<div><div class="card"><h3>Son 7 gün</h3><div class="week">${week}</div></div><div class="card"><h3>Seviye ilerlemesi</h3>${prog}</div></div></div>` };
+<div><div class="card"><h3>Son 7 gün</h3><div class="week">${week}</div></div><div class="card"><h3>Seviye ilerlemesi</h3>${prog}</div></div></div><p class="muted center" style="margin-top:8px"><button class="btn sm link" data-a="tab" data-t="ayar">Sürüm ${G.VERSION}</button></p>` };
 };
 G.screens.teori = function () {
   const sg = G.ui.tseg;
@@ -345,6 +355,7 @@ G.screens.ayar = function () {
 <div class="card"><h3>İlerleme</h3><div class="muted">Görülen klavye konumu: ${seen} · pekişen: ${mast} · toplam XP: ${S.xp}</div><div class="row g"><button class="btn sm ghost" data-a="go" data-s="heat">Klavye ısı haritası</button></div></div></div>
 <div><div class="card"><h3>Yedek</h3><div class="muted">İlerleme bu cihazın tarayıcısında saklanır. Tarayıcı verisi silinirse kaybolur; ara sıra yedek al. Yedeği başka cihaza yükleyerek ilerlemeni taşıyabilirsin.</div><div class="row g"><button class="btn sm" data-a="exp">Yedeği indir</button><button class="btn sm ghost" data-a="imp">Yedeği yükle</button><input type="file" id="impf" accept=".json,application/json" hidden></div><div class="row g"><button class="btn sm danger" data-a="reset">Her şeyi sıfırla</button></div></div>
 <div class="card"><h3>Telefona kurma</h3><div class="muted">GitHub Pages adresini telefonda aç. iPhone: Paylaş → Ana Ekrana Ekle. Android: menü (⋮) → Ana ekrana ekle / Uygulamayı yükle. Sonra internetsiz de çalışır.</div></div>
+<div class="card"><h3>Sürüm ${G.VERSION}</h3><div class="muted">${G.CHANGES[0][1]}</div><details class="leg"><summary>Değişiklikler</summary>${G.CHANGES.map(c => `<p class="muted"><b>${c[0]}.</b> ${c[2]}</p>`).join('')}</details></div>
 <div class="card"><h3>İpuçları</h3><div class="muted">Bilgisayarda soruları klavyeyle çözebilirsin: 1–9 seçenek, Enter devam, R sesi tekrar çalar. Ses gelmezse telefonun sessiz modunu kapat.</div></div></div></div>`,
     after: () => { const f = $('#impf'); if (f) f.onchange = () => { const r = new FileReader(); r.onload = () => { try { const j = JSON.parse(r.result); if (!j || !j.v || !j.set) throw 0; Object.keys(S).forEach(k => delete S[k]); Object.assign(S, migrate(j)); G.save(); alert('Yedek yüklendi.'); G.buildTracks(); applyTheme(); G.rerender(); } catch (e) { alert('Geçersiz yedek dosyası.'); } }; r.readAsText(f.files[0]); }; } };
 };
@@ -375,6 +386,9 @@ G.boot = function () {
   document.addEventListener('keydown', onKey);
   document.addEventListener('pointerdown', () => { try { Aud.init(); } catch (e) {} }, { once: true });
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
+  const vb = document.querySelector('#ver'); if (vb) vb.textContent = 'Sürüm ' + G.VERSION;
   G.go('home');
+  if (S.ver && S.ver < G.VERSION) { const c = G.CHANGES.filter(x => x[0] > S.ver); G.modal(`<h3>Yeni sürüm: ${G.VERSION}</h3>${c.map(x => `<p><b>${x[0]}.</b> ${x[2]}</p>`).join('')}`); }
+  S.ver = G.VERSION; G.save();
 };
 })();

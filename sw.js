@@ -1,4 +1,4 @@
-const CACHE = 'gitar-v6';
+const CACHE = 'gitar-v7';
 const FILES = ['./', './index.html', './style.css', './music.js', './audio.js', './chords.js', './theory.js', './core.js', './sap.js', './makam.js', './kulak.js', './akor.js', './klasik.js', './eslik.js', './main.js', './manifest.json', './icon-192.png', './icon-512.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
