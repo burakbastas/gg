@@ -1,8 +1,9 @@
 (function () {
 'use strict';
 const G = window.G = { screens: {}, actions: {}, tracks: {}, ui: { tseg: 'armoni' } };
-G.VERSION = 17;
+G.VERSION = 18;
 G.CHANGES = [
+  [18, '10 Kasım 2026', 'Uygulama simgesi yüklemede de yeni logoyu gösteriyor; güncellemeler önbellekte takılmıyor.'],
   [17, '10 Kasım 2026', 'Logo ve uygulama simgesi: turkuaz zemin üzerinde dalgalı telli pembe pena.'],
   [16, '10 Kasım 2026', 'Yeni Memphis tasarımı: yeni logo ve simge; krem, mürekkep laciverti, turkuaz, pembe ve sarı paleti; kalın çerçeveli kartlar ve düğmeler, düz gölgeler, konfeti zemin, Righteous başlık yazısı. Koyu tema da aynı paletle yenilendi.'],
   [15, '10 Kasım 2026', 'Windows/Chrome/Edge’de yüklü uygulamanın simgesi güncellenmiyordu: uygulama kimliği eski sürümle eşleştirildi, simgeler yeni dosya adlarıyla yeniden üretildi.'],
