@@ -1,8 +1,9 @@
 (function () {
 'use strict';
 const G = window.G = { screens: {}, actions: {}, tracks: {}, ui: { tseg: 'armoni' } };
-G.VERSION = 15;
+G.VERSION = 16;
 G.CHANGES = [
+  [16, '10 Kasım 2026', 'Yeni Memphis tasarımı: yeni logo ve simge; krem, mürekkep laciverti, turkuaz, pembe ve sarı paleti; kalın çerçeveli kartlar ve düğmeler, düz gölgeler, konfeti zemin, Righteous başlık yazısı. Koyu tema da aynı paletle yenilendi.'],
   [15, '10 Kasım 2026', 'Windows/Chrome/Edge’de yüklü uygulamanın simgesi güncellenmiyordu: uygulama kimliği eski sürümle eşleştirildi, simgeler yeni dosya adlarıyla yeniden üretildi.'],
   [14, '2 Kasım 2026', 'Akort aleti telefonda çalışmıyordu: iPhone’da ses oturumu mikrofonu susturuyordu, ses motoru izin sonrası başlamıyordu. Düzeltildi; mikrofon seviye göstergesi ve anlaşılır hata mesajları eklendi. Repertuvar kaydı da aynı nedenle iPhone’da sessiz kalabiliyordu, düzeltildi. Tüm ekranlar ve düğmeler test edildi; küçük hatalar giderildi.'],
   [13, '1 Kasım 2026', 'Akort ve metronom modülü: mikrofonla akort (gitar, kromatik, makam/koma), 11 akort düzeni + özel, A4 ayarı, referans ses, kararlılık grafiği; metronom: tap tempo, aksak usuller (5/8, 7/8, 9/8, 10/8), vurgu düzenleme, alt bölüm ve swing, 4 ses, tempo antrenörü, sessiz ölçü, otomatik durma, kayıtlı ayarlar; ekranlar arasında çalmaya devam eder.'],
@@ -433,7 +434,7 @@ function applyTheme() {
   const t = S.set.theme; const r = document.documentElement;
   if (t === 'auto') delete r.dataset.theme; else r.dataset.theme = t;
   const dark = t === 'dark' || (t === 'auto' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
-  const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = dark ? '#121317' : '#f5f1ea';
+  const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = dark ? '#17173A' : '#FFF6E5';
 }
 G.screens.ayar = function () {
   const b = (a, v, cur, l) => `<button class="btn sm ${cur === v ? 'on' : 'ghost'}" data-a="${a}" data-v="${v}">${l}</button>`;
