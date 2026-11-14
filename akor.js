@@ -15,21 +15,34 @@ const MKEYS = ['A', 'E', 'B', 'F#', 'C#', 'G#', 'D', 'G', 'C', 'F', 'Bb'];
 const BARRES = ['F#', 'F#m', 'G#m', 'Ab', 'Bb', 'Bbm', 'B', 'Cm', 'C#m', 'Db', 'Eb', 'Ebm', 'Fm', 'Gm', 'F#7', 'C#m7'];
 
 // ---------- menü ----------
-G.screens.akor = function () {
-  const card = (ic, t, d, attrs) => `<button class="menu" ${attrs}><span class="pic">${G.icon(ic)}</span><span><b>${t}</b><span class="muted">${d}</span></span></button>`;
-  const yd = Object.values(S.yol || {}).filter(Boolean).length;
-  return { t: 'Akor ve arpej', cat: 'akor', h: `<h2 class="sec">Hedef: kulaktan eşlik</h2><div class="menus">
-${card('yol', '1 yıllık eşlik yolu', `12 ay, 48 hedef: el, kulak ve teori adım adım. ${yd} hedef tamamlandı.`, 'data-a="go" data-s="yol"')}
-${card('kulak', 'Kulaktan çıkarma asistanı', 'Ton sesi, tondaki olası akorlar, melodi notasından akor bulma ve şarkıya kaydetme.', 'data-a="go" data-s="asistan"')}
-</div><h2 class="sec">Gitar elindeyken</h2><div class="menus">
-${card('gecis', 'Akor geçişleri', 'Tonlara göre pop geçişleri, sapta kaydırarak akor değiştirme, barre aileleri. Metronom ve hız merdiveni.', 'data-a="go" data-s="zincir"')}
+G.screens.pop = function () {
+  const sg = ['yol', 'calis', 'sarki', 'akor'].includes(G.ui.pseg) ? G.ui.pseg : 'yol';
+  const seg = G.segBar('pseg', sg, [['yol', 'Yol'], ['calis', 'Çalış'], ['sarki', 'Şarkılar'], ['akor', 'Akorlar']]);
+  const card = (ic, t, d, attrs, x) => `<button class="menu ${x || ''}" ${attrs}><span class="pic">${G.icon(ic)}</span><span><b>${t}</b><span class="muted">${d}</span></span></button>`;
+  if (sg === 'akor') { const L = G.screens.lib(); return { t: 'Pop ve eşlik', cat: 'akor', h: seg + L.h, after: L.after }; }
+  let h = '';
+  if (sg === 'yol') {
+    const yd = Object.values(S.yol || {}).filter(Boolean).length;
+    h = `<p class="muted">Hedef: bir şarkıyı kulaktan dinleyip kendi başına eşlik etmek.</p><div class="menus">
+${card('yol', '1 yıllık eşlik yolu', `12 ay, 48 hedef: el, kulak ve teori adım adım. ${yd}/48 hedef tamamlandı.`, 'data-a="go" data-s="yol"', 'hl')}
+${card('sekil', 'JustinGuitar kursu', 'Ücretsiz video kurs: 1–3. seviye başlangıç, 4–7. seviye orta. Her seviyenin uygulamadaki karşılık alıştırmaları ile.', 'data-a="go" data-s="jg"')}
+</div>`;
+  } else if (sg === 'calis') {
+    h = `<p class="muted">Gitar elindeyken. Hepsinde metronom, sayarak başlama ve hız merdiveni var.</p><div class="menus">
+${card('gecis', 'Akor geçişleri', 'Tonlara göre pop geçişleri, sapta kaydırarak akor değiştirme, barre aileleri, 1 dakika testi.', 'data-a="go" data-s="zincir"')}
 ${card('arpej', 'Arpej atölyesi', 'Akor dizisi üzerinde p-i-m-a kalıpları; kendi desenini yaz.', 'data-a="go" data-s="arpej"')}
-${card('sarki', 'Şarkılarım', 'Akorları yaz, desen ve tempo seç, eşlik ederken akorlar sırayla aksın.', 'data-a="go" data-s="songs"')}
-${card('sekil', 'Akor kütüphanesi', 'Açık, 7’li, sus, slash ve barre akorlar. Akor ara.', 'data-a="go" data-s="lib"')}
 ${card('sap', 'Barre ve tonlar', 'Her tonda diatonik akorlar, Mi ve La şekli barre perdeleri.', 'data-a="go" data-s="tonlar" data-p=\'{"k":"C","t":"maj"}\'')}
-</div><h2 class="sec">Gitarsız: akor şekli oyunları</h2><div class="lvgrid">${G.levelList(G.tracks.sekil)}</div>
-<div class="menus" style="margin-top:12px">${card('teori', 'Barre Bulucu', '“Si♭ minör La şekliyle kaçıncı perde?”, “F’den A’ya kaç perde kayarsın?” gibi hızlı sorular.', 'data-a="barregame"')}</div>` };
+</div>`;
+  } else {
+    h = `<p class="muted">Şarkılarını yaz, kulaktan çıkar, kayıtla birlikte çal.</p><div class="menus">
+${card('sarki', 'Şarkılarım', 'Akorları yaz, desen ve tempo seç, eşlik ederken akorlar sırayla aksın.', 'data-a="go" data-s="songs"')}
+${card('kulak', 'Kulaktan çıkarma asistanı', 'Ton sesi, tondaki olası akorlar, melodi notasından akor bulma ve şarkıya kaydetme.', 'data-a="go" data-s="asistan"')}
+</div>`;
+  }
+  return { t: 'Pop ve eşlik', cat: sg === 'sarki' ? 'sarki' : 'akor', h: seg + h };
 };
+G.actions.pseg = d => { G.ui.pseg = d.v; G.rerender(); };
+G.screens.akor = function () { G.ui.pseg = G.ui.pseg || 'calis'; return G.screens.pop(); };
 
 // ---------- kütüphane ----------
 let LF = 'all';

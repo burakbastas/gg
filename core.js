@@ -1,8 +1,9 @@
 (function () {
 'use strict';
 const G = window.G = { screens: {}, actions: {}, tracks: {}, ui: { tseg: 'armoni' } };
-G.VERSION = 18;
+G.VERSION = 19;
 G.CHANGES = [
+  [19, '14 Kasım 2026', 'Yeni düzen: 5 sekme (Bugün, Klasik, Pop, Teori, Araçlar), her bölümde alt sekmeler. Klasikte metot seçimi: Delcamp, This is Classical Guitar, Cornerstone, The Guitar School ve telifsiz klasik metotlar; Teknik ve Repertuvarım ayrı. Pop’a JustinGuitar kursu. Teori altında Armoni, Kulak, Klavye ve Makam. Yeni Stüdyo teması (koyu ve açık), IBM Plex yazı tipi ve trill işaretli yeni simge.'],
   [18, '10 Kasım 2026', 'Uygulama simgesi yüklemede de yeni logoyu gösteriyor; güncellemeler önbellekte takılmıyor.'],
   [17, '10 Kasım 2026', 'Logo ve uygulama simgesi: turkuaz zemin üzerinde dalgalı telli pembe pena.'],
   [16, '10 Kasım 2026', 'Yeni Memphis tasarımı: yeni logo ve simge; krem, mürekkep laciverti, turkuaz, pembe ve sarı paleti; kalın çerçeveli kartlar ve düğmeler, düz gölgeler, konfeti zemin, Righteous başlık yazısı. Koyu tema da aynı paletle yenilendi.'],
@@ -125,8 +126,9 @@ function render(name, p) {
   $('#app').innerHTML = sc.h;
   cat = sc.cat || null;
   $('#back').hidden = stack.length < 2;
-  const root = stack[0].name;
-  document.querySelectorAll('[data-a=tab]').forEach(b => { b.classList.toggle('on', b.dataset.t === root); if (b.closest('#nav')) b.setAttribute('aria-current', b.dataset.t === root ? 'page' : 'false'); });
+  const root = stack[0].name, nr = NAVROOT[root] || root;
+  document.body.dataset.root = nr; document.body.classList.toggle('sub', stack.length > 1);
+  document.querySelectorAll('#nav [data-a=tab]').forEach(b => { b.classList.toggle('on', b.dataset.t === nr); b.setAttribute('aria-current', b.dataset.t === nr ? 'page' : 'false'); });
   if (sc.after) sc.after();
   enhance();
   updTimer();
@@ -151,7 +153,10 @@ G.go = function (name, p, push) {
 };
 G.rerender = () => { const t = stack[stack.length - 1]; const y = window.scrollY; render(t.name, t.p); window.scrollTo(0, y); };
 G.replace = (name, p) => { stack[stack.length - 1] = { name, p }; hRepl(); render(name, p); window.scrollTo(0, 0); };
-G.goTab = (tab, sub, p) => { stack = [{ name: tab, p: {} }]; if (sub) { hPush(); G.go(sub, p || {}); } else { hPush(); render(tab, {}); window.scrollTo(0, 0); } };
+const TABALIAS = { sap: ['teori', 'klavye'], makam: ['teori', 'makam'], kulak: ['teori', 'kulak'], akor: ['pop', 'calis'] };
+const NAVROOT = { home: 'home', ayar: 'ayar', klasik: 'klasik', pop: 'pop', teori: 'teori', arac: 'arac', sap: 'teori', makam: 'teori', akor: 'pop' };
+G.goTab = (tab, sub, p) => { const al = TABALIAS[tab]; if (al) { tab = al[0]; if (al[0] === 'teori') G.ui.tseg = al[1]; else G.ui.pseg = al[1]; }
+  stack = [{ name: tab, p: {} }]; if (sub) { hPush(); G.go(sub, p || {}); } else { hPush(); render(tab, {}); window.scrollTo(0, 0); } };
 G.modal = html => { const m = $('#modal'); m.innerHTML = `<div class="box" role="dialog" aria-modal="true">${html}<button class="btn ghost full" style="margin-top:14px" data-a="mclose">Kapat</button></div>`; m.hidden = false; };
 G.actions.mclose = () => { if (G._recStop) G._recStop(); $('#modal').hidden = true; $('#modal').innerHTML = ''; if (G._modalDirty) { G._modalDirty = false; G.rerender(); } };
 G.actions.tab = d => { if (stack.length === 1 && stack[0].name === d.t && !SES) { window.scrollTo({ top: 0, behavior: 'smooth' }); return; } G.goTab(d.t); };
@@ -381,11 +386,11 @@ G.actions.short = () => { S.short = S.short || {}; const k = dayKey(); if (S.sho
 G.actions.plan = d => {
   const k = d.k, nx = t => G.nextOf(G.tracks[t]);
   if (k === 'sap') { if (G.dueCount()) return G.actions.review(); const L = nx('sap'); return L ? G.actions.lv({ id: L.id }) : G.goTab('sap'); }
-  if (k === 'teori' || k === 'kulak' || k === 'sekil') { const L = nx(k); if (L) return G.actions.lv({ id: L.id }); return G.goTab(k === 'sekil' ? 'akor' : 'teori'); }
+  if (k === 'teori' || k === 'kulak' || k === 'sekil') { const L = nx(k); if (L) return G.actions.lv({ id: L.id }); G.ui.tseg = k === 'sekil' ? 'klavye' : k === 'kulak' ? 'kulak' : 'armoni'; return G.goTab('teori'); }
   if (k === 'makam') return G.goTab('makam');
-  if (k === 'gecis') return G.goTab('akor', 'zincir');
-  if (k === 'arpej') return G.goTab('akor', 'arpej');
-  if (k === 'sarki') return G.goTab('akor', 'asistan');
+  if (k === 'gecis') { G.ui.pseg = 'calis'; return G.goTab('pop', 'zincir'); }
+  if (k === 'arpej') { G.ui.pseg = 'calis'; return G.goTab('pop', 'arpej'); }
+  if (k === 'sarki') { G.ui.pseg = 'sarki'; return G.goTab('pop', 'asistan'); }
   if (k === 'klasik') return G.goTab('klasik');
 };
 
@@ -402,41 +407,50 @@ const ICON = { // çoğu Lucide (ISC lisansı) — lucide.dev
   yol: '<circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/><circle cx="18" cy="5" r="3"/>',
   sarki: '<path d="M16 5H3"/><path d="M11 12H3"/><path d="M11 19H3"/><path d="M21 16V5"/><circle cx="18" cy="16" r="3"/>'
 };
+G.segBar = (act, cur, items) => `<div class="tabs" role="tablist">${items.map(([v, l]) => `<button role="tab" aria-selected="${v === cur}" class="${v === cur ? 'on' : ''}" data-a="${act}" data-v="${v}">${l}</button>`).join('')}</div>`;
 G.icon = k => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${ICON[k] || ''}</svg>`;
 G.screens.home = function () {
   const d = today(); const plan = G.plan();
-  const tot = Math.floor((d.away + d.guitar) / 60);
+  const tot = Math.floor((d.away + d.guitar) / 60), goal = goalMin();
+  const p2 = n => String(n).padStart(2, '0');
   let firstOpen = -1;
-  const items = plan.map((it, ix) => {
+  const rows = plan.map((it, ix) => {
     const v = Math.floor(((d.sub || {})[it.k] || 0) / 60), done = v >= it.m;
     if (!done && firstOpen < 0) firstOpen = ix;
-    return `<div class="pi ${done ? 'done' : ''} ${firstOpen === ix ? 'nx' : ''}"><span class="pic">${G.icon(it.k)}</span><div class="pit"><div class="row"><b>${it.n}</b><span class="muted">${v}/${it.m} dk</span></div><div class="bar2 thin ${done ? 'gr' : ''}"><i style="width:${Math.min(100, v / it.m * 100)}%"></i></div></div><button class="btn sm ${done || firstOpen !== ix ? 'ghost' : ''}" data-a="plan" data-k="${it.k}" aria-label="${it.n}: ${done ? 'tamamlandı, tekrar aç' : 'başla'}">${done ? '✓' : 'Başla'}</button></div>`;
+    const nx = firstOpen === ix;
+    return { g: !!it.g, m: it.m, h: `<button class="pi ${done ? 'done' : ''} ${nx ? 'nx' : ''}" data-a="plan" data-k="${it.k}" aria-label="${it.n}: ${v}/${it.m} dakika${done ? ', tamamlandı' : nx ? ', sıradaki' : ''}"><i class="pdot" aria-hidden="true"></i><span class="pn">${it.n}</span><span class="pm">${p2(v)}/${p2(it.m)}</span></button>` };
   });
-  const days = []; for (let i = 6; i >= 0; i--) { const x = new Date(); x.setDate(x.getDate() - i); days.push({ k: dayKey(x), l: ['Pz', 'Pt', 'Sa', 'Ça', 'Pe', 'Cu', 'Ct'][x.getDay()] }); }
-  const week = days.map(x => { const m = Math.floor(dayTotal(x.k) / 60); return `<div class="wd"><div class="wb"><i style="height:${Math.min(100, m / 60 * 100)}%"></i></div><span>${x.l}</span><em>${m || ''}</em></div>`; }).join('');
+  const grp = (g, l) => { const r = rows.filter(x => x.g === g); return r.length ? `<div class="ptag">${l} · ${r.reduce((a, x) => a + x.m, 0)} dk</div><div class="plist">${r.map(x => x.h).join('')}</div>` : ''; };
+  const days = []; for (let i = 6; i >= 0; i--) { const x = new Date(); x.setDate(x.getDate() - i); days.push({ k: dayKey(x), l: ['Pz', 'Pt', 'Sa', 'Ça', 'Pe', 'Cu', 'Ct'][x.getDay()], t: i === 0 }); }
+  const wsec = days.reduce((a, x) => a + dayTotal(x.k), 0), wmin = Math.floor(wsec / 60);
+  const week = days.map(x => { const m = Math.floor(dayTotal(x.k) / 60); return `<div class="wd ${x.t ? 'td' : ''}"><em>${m || ''}</em><div class="wb"><i style="height:${Math.min(100, m / 60 * 100)}%"></i></div><span>${x.l}</span></div>`; }).join('');
   const TR = [['sap', 'Klavye'], ['teori', 'Armoni'], ['makam', 'Makam'], ['kulak', 'Kulak'], ['sekil', 'Akor şekli']];
   const prog = TR.map(t => { const a = G.tracks[t[0]], p = G.passed(a); return `<div class="tp"><span>${t[1]}</span><div class="bar2 thin"><i style="width:${p / a.length * 100}%"></i></div><em>${p}/${a.length}</em></div>`; }).join('');
   const due = G.dueCount();
-  return { t: 'Gitar Gelişim', h: `<section class="hero"><div class="hs"><div class="hv">${streak()}</div><div class="hl">gün seri</div></div><div class="hs"><div class="hv">${tot}<small>/${goalMin()}</small></div><div class="hl">bugün (dk)</div></div><div class="hs"><div class="hv">${S.xp}</div><div class="hl">XP</div></div></section>
-${S.last && S.last.t && S.last.t !== 'Gitar Gelişim' ? `<button class="resume" data-a="resume"><span class="muted">Kaldığın yerden devam</span><b>${S.last.t}</b><span class="ra">›</span></button>` : ''}
-${due ? `<button class="banner" data-a="review"><b>Tekrar zamanı:</b> ${due} klavye notası seni bekliyor <span>›</span></button>` : ''}
-<div class="two"><div class="card"><div class="row"><h3>Bugünün planı</h3><button class="btn sm ${isShort() ? 'on' : 'ghost'}" data-a="short" aria-pressed="${isShort()}">Kısa gün · 10 dk</button></div><div class="muted" style="margin-bottom:8px">${isShort() ? 'Yoğun günler için: 6 dk gitarsız, 4 dk gitarla. Seri bozulmaz (seri için günde 10 dakika yeter).' : 'Gitarsız 25 dk · gitarla 35 dk'}</div>${isShort() ? `<div class="ptag">Gitar elinde değilken</div>${items.slice(0, 2).join('')}<div class="ptag">Gitar elindeyken</div>${items.slice(2).join('')}` : `<div class="ptag">Gitar elinde değilken</div>${items.slice(0, 3).join('')}<div class="ptag">Gitar elindeyken</div>${items.slice(3).join('')}`}</div>
-<div><div class="card"><h3>Son 7 gün</h3><div class="week">${week}</div></div><div class="card"><h3>Seviye ilerlemesi</h3>${prog}</div></div></div><p class="muted center" style="margin-top:8px"><button class="btn sm link" data-a="tab" data-t="ayar">Sürüm ${G.VERSION}</button></p>` };
+  let dstr = ''; try { dstr = new Date().toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' }); } catch (e) {}
+  const play = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v16l13-8z"/></svg>';
+  return { t: 'Bugün', h: `<p class="hday">${dstr}</p><section class="kpis"><div class="kpi"><span class="kl">Seri</span><b>${streak()}<small> gün</small></b></div><div class="kpi"><span class="kl">Bugün</span><b>${tot}<small>/${goal}</small></b><span class="kbar"><i style="width:${Math.min(100, tot / goal * 100)}%"></i></span></div><div class="kpi"><span class="kl">Hafta</span><b>${Math.floor(wmin / 60)}:${p2(wmin % 60)}<small> sa</small></b></div></section>
+${S.last && S.last.t && !['Gitar Gelişim', 'Bugün'].includes(S.last.t) ? `<button class="resume" data-a="resume"><span class="rl"><i aria-hidden="true"></i>Kaldığın yerden devam</span><b>${S.last.t}</b><span class="ra">${play}</span></button>` : ''}
+${due ? `<button class="banner" data-a="review"><b>Tekrar zamanı:</b> ${due} klavye notası seni bekliyor <span aria-hidden="true">›</span></button>` : ''}
+<div class="two"><div><div class="card plan"><div class="row"><h3>Bugünün planı</h3><button class="btn sm ${isShort() ? 'on' : 'ghost'}" data-a="short" aria-pressed="${isShort()}">Kısa gün · 10 dk</button></div>${isShort() ? '<p class="muted">Yoğun günler için: 6 dk gitarsız, 4 dk gitarla. Seri bozulmaz (seri için günde 10 dakika yeter).</p>' : ''}${grp(false, 'Gitarsız')}${grp(true, 'Gitarla')}</div></div>
+<div><div class="card"><h3>Son 7 gün</h3><div class="week">${week}</div></div><div class="card"><h3>Seviye ilerlemesi</h3>${prog}<p class="muted" style="margin:10px 0 0">Toplam ${S.xp} XP</p></div></div></div><p class="muted center" style="margin-top:8px"><button class="btn sm link" data-a="tab" data-t="ayar">Sürüm ${G.VERSION}</button></p>` };
 };
 G.screens.teori = function () {
-  const sg = G.ui.tseg;
-  const seg = `<div class="seg"><button class="btn sm ${sg === 'armoni' ? 'on' : 'ghost'}" data-a="tseg" data-v="armoni">Armoni</button><button class="btn sm ${sg === 'kulak' ? 'on' : 'ghost'}" data-a="tseg" data-v="kulak">Kulak</button></div>`;
+  const sg = ['armoni', 'kulak', 'klavye', 'makam'].includes(G.ui.tseg) ? G.ui.tseg : 'armoni';
+  const seg = G.segBar('tseg', sg, [['armoni', 'Armoni'], ['kulak', 'Kulak'], ['klavye', 'Klavye'], ['makam', 'Makam']]);
+  if (sg === 'klavye') return { t: 'Teori', cat: 'sap', h: seg + G.part_klavye() };
+  if (sg === 'makam') return { t: 'Teori', cat: 'makam', h: seg + G.part_makam() };
   const intro = sg === 'armoni' ? 'Gitar elinde yokken. Her seviyenin bir konu anlatımı var; son 15 cevabın 14’ü doğru olunca sonraki açılır.' : 'Kulaklıkla çalış. Sesler gitar tınısıyla sentezlenir; her soru otomatik çalar.';
   const src = sg === 'armoni' && window.theorySources && theorySources();
   const srcCard = src ? `<details class="card srcs"><summary><b>Kaynaklar</b> <span class="muted">· derslerin dayandığı açık lisanslı kitaplar</span></summary><p class="muted">Konu sırası ve anlatımlar aşağıdaki ücretsiz, açık lisanslı ders kitaplarından yararlanılarak Türkçe ve gitara uyarlanarak yazıldı. Her dersin sonunda ilgili bölümün bağlantısı var.</p><ul class="srcl"><li><a href="https://viva.pressbooks.pub/openmusictheory/" target="_blank" rel="noopener">Open Music Theory</a> (Gotham, Gullings, Hamm, Hughes, Jarvis, Lavengood, Peterson) · CC BY-SA 4.0 · pop şemaları ve modal kalıplar</li><li><a href="https://musictheory.pugetsound.edu/mt21c/" target="_blank" rel="noopener">Music Theory for the 21st-Century Classroom</a> (Robert Hutchinson) · GNU FDL · temel bilgiler, akorlar, kadanslar, ikincil dominant, ödünç akor</li><li><a href="https://milneopentextbooks.org/fundamentals-function-and-form/" target="_blank" rel="noopener">Fundamentals, Function, and Form</a> (Andre Mount) · CC BY 4.0 · fonksiyonel armoni</li></ul><p class="muted">Ders yapısı: kısa “neden”, anlatım, çözümlü örnek, “kendini dene” (önce düşün, sonra cevaba dokun), gitarda uygulama, özet. Sorular kolay tonlarla başlar ve sen ilerledikçe zorlaşır; ara ara karışık tekrar seviyeleri gelir.</p></details>` : '';
-  return { t: sg === 'armoni' ? 'Armoni teorisi' : 'Kulak eğitimi', h: `${seg}<p class="muted">${intro}</p><div class="lvgrid">${G.levelList(G.tracks[sg === 'armoni' ? 'teori' : 'kulak'])}</div>${srcCard}` };
+  return { t: 'Teori', cat: sg === 'armoni' ? 'teori' : 'kulak', h: `${seg}<p class="muted">${intro}</p><div class="lvgrid">${G.levelList(G.tracks[sg === 'armoni' ? 'teori' : 'kulak'])}</div>${srcCard}` };
 };
 G.actions.tseg = d => { G.ui.tseg = d.v; G.rerender(); };
 function applyTheme() {
   const t = S.set.theme; const r = document.documentElement;
   if (t === 'auto') delete r.dataset.theme; else r.dataset.theme = t;
   const dark = t === 'dark' || (t === 'auto' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
-  const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = dark ? '#17173A' : '#FFF6E5';
+  const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = dark ? '#0E1013' : '#FFFFFF';
 }
 G.screens.ayar = function () {
   const b = (a, v, cur, l) => `<button class="btn sm ${cur === v ? 'on' : 'ghost'}" data-a="${a}" data-v="${v}">${l}</button>`;
@@ -447,7 +461,7 @@ G.screens.ayar = function () {
 <div><div class="card"><h3>Yedek</h3><div class="muted">İlerleme bu cihazın tarayıcısında saklanır. Tarayıcı verisi silinirse kaybolur; ara sıra yedek al. Yedeği başka cihaza yükleyerek ilerlemeni taşıyabilirsin.</div><div class="row g"><button class="btn sm" data-a="exp">Yedeği indir</button><button class="btn sm ghost" data-a="imp">Yedeği yükle</button><input type="file" id="impf" accept=".json,application/json" hidden></div><div class="row g"><button class="btn sm danger" data-a="reset">Her şeyi sıfırla</button></div></div>
 <div class="card"><h3>Telefona kurma</h3><div class="muted">GitHub Pages adresini telefonda aç. iPhone: Paylaş → Ana Ekrana Ekle. Android: menü (⋮) → Ana ekrana ekle / Uygulamayı yükle. Sonra internetsiz de çalışır.</div></div>
 <div class="card"><h3>Sürüm ${G.VERSION}</h3><div class="muted">${G.CHANGES[0][1]}</div><details class="leg"><summary>Değişiklikler</summary>${G.CHANGES.map(c => `<p class="muted"><b>${c[0]}.</b> ${c[2]}</p>`).join('')}</details></div>
-<div class="card"><h3>Ses</h3><div class="muted">Ses gelmiyorsa buradan dene. iPhone’da yan taraftaki sessiz düğmesi kapalıyken de çalması için ayarlandı; yine de gelmezse sesi aç ve ekranı bir kez yenile.</div><div class="muted" style="margin-top:8px">Gitar sesi</div><div class="seg">${b('settone', 'smp', S.set.tone, 'Naylon gitar (kayıt)')}${b('settone', 'syn', S.set.tone, 'Sentez (hafif)')}</div><div class="row g"><button class="btn sm" data-a="sndtest">▶ Sesi test et</button><span class="muted" id="sndst"></span></div><p class="muted" style="font-size:12px;margin-top:8px">Naylon gitar örnekleri: quartertone (Freesound), tonejs-instruments derlemesi, CC BY 3.0.</p></div>
+<div class="card"><h3>Ses</h3><div class="muted">Ses gelmiyorsa buradan dene. iPhone’da yan taraftaki sessiz düğmesi kapalıyken de çalması için ayarlandı; yine de gelmezse sesi aç ve ekranı bir kez yenile.</div><div class="muted" style="margin-top:8px">Gitar sesi</div><div class="seg">${b('settone', 'smp', S.set.tone, 'Naylon gitar (kayıt)')}${b('settone', 'syn', S.set.tone, 'Sentez (hafif)')}</div><div class="row g"><button class="btn sm" data-a="sndtest">▶ Sesi test et</button><span class="muted" id="sndst"></span></div><p class="muted" style="font-size:12px;margin-top:8px">Naylon gitar örnekleri: quartertone (Freesound), tonejs-instruments derlemesi, CC BY 3.0. Yazı tipi: IBM Plex Sans ve IBM Plex Mono (IBM), SIL Open Font License 1.1.</p></div>
 <div class="card"><h3>İpuçları</h3><div class="muted">Bilgisayarda soruları klavyeyle çözebilirsin: 1–9 seçenek, Enter devam, R sesi tekrar çalar. Ses gelmezse telefonun sessiz modunu kapat.</div></div></div></div>`,
     after: () => { const f = $('#impf'); if (f) f.onchange = () => { const r = new FileReader(); r.onload = () => { try { const j = JSON.parse(r.result); if (!j || !j.v || !j.set) throw 0; Object.keys(S).forEach(k => delete S[k]); Object.assign(S, migrate(j)); G.save(); alert('Yedek yüklendi.'); G.buildTracks(); applyTheme(); G.rerender(); } catch (e) { alert('Geçersiz yedek dosyası.'); } }; r.readAsText(f.files[0]); }; } };
 };

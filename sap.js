@@ -113,10 +113,14 @@ FLV.push({ id: 'f13', name: 'Porte ↔ sap · 5.–9. perde', desc: 'V. pozisyon
 FLV.forEach(L => { L.gen = () => fretGen(L); });
 G.FLV = FLV;
 
-G.screens.sap = function () {
+G.part_klavye = function () {
   const due = G.dueCount();
-  return { t: 'Klavye haritası', cat: 'sap', h: `<div class="row g" style="margin:0 0 10px">${due ? `<button class="btn sm" data-a="review">Tekrar zamanı (${due})</button>` : ''}<button class="btn sm ghost" data-a="go" data-s="heat">Isı haritası</button></div><p class="muted">Yanlış yaptıkların daha sık, bildiklerin seyrek gelir. Bildiğin seviyeleri “Zaten biliyorum” ile geçebilirsin.</p><div class="lvgrid">${G.levelList(FLV)}</div>` };
+  const card = (ic, t, d, attrs) => `<button class="menu" ${attrs}><span class="pic">${G.icon(ic)}</span><span><b>${t}</b><span class="muted">${d}</span></span></button>`;
+  return `<div class="row g" style="margin:0 0 10px">${due ? `<button class="btn sm" data-a="review">Tekrar zamanı (${due})</button>` : ''}<button class="btn sm ghost" data-a="go" data-s="heat">Isı haritası</button></div><p class="muted">Klavyede notaların yeri. Yanlış yaptıkların daha sık, bildiklerin seyrek gelir. Bildiğin seviyeleri “Zaten biliyorum” ile geçebilirsin.</p><h2 class="sec">Klavye haritası</h2><div class="lvgrid">${G.levelList(FLV)}</div>
+<h2 class="sec">Akor şekli oyunları</h2><div class="lvgrid">${G.levelList(G.tracks.sekil)}</div>
+<div class="menus" style="margin-top:4px">${card('teori', 'Barre Bulucu', '“Si♭ minör La şekliyle kaçıncı perde?”, “F’den A’ya kaç perde kayarsın?” gibi hızlı sorular.', 'data-a="barregame"')}</div>`;
 };
+G.screens.sap = function () { G.ui.tseg = 'klavye'; return G.screens.teori(); };
 G.screens.heat = function () {
   let h = '<p class="muted">Kırmızı: zayıf · turuncu/sarı: öğreniliyor · yeşil: pekişti · boş: henüz görülmedi. Üst satır = ince Mi teli.</p><div class="card"><div class="heat"><span></span>';
   for (let f = 0; f <= 12; f++) h += `<span class="h">${f}</span>`;

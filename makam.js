@@ -115,15 +115,16 @@ G.mScale = mScale; G.mChord = mChord;
 function stepTxt(a, b) { const d = (M.pcOf(b) - M.pcOf(a) + 12) % 12; return d === 1 ? 'Y' : d === 2 ? 'T' : d === 3 ? 'A' : d; }
 
 // ---------- ekranlar ----------
-G.screens.makam = function () {
+G.part_makam = function () {
   const cards = MAK.map(mk => `<button class="mk-card" data-a="go" data-s="makamd" data-p='${JSON.stringify({ id: mk.id })}'>
     <span class="mk-n">${mk.name}</span><span class="mk-w">${mk.west}</span>
     <span class="mk-s">${mScale(mk, mk.k).map(G.nnPlain).join(' ')}</span>${mk.koma ? '<span class="pill warn">koma · yaklaşık</span>' : '<span class="pill ok">gitarda tam</span>'}</button>`).join('');
-  return { t: 'Makamlar', cat: 'makam', h: `<div class="intro"><p>Gitarın perdeleri oktavı 12 eşit parçaya böler (her perde ≈ 4,4 koma). TSM’de oktav 53 komadır, bu yüzden <b>segâh, eviç</b> gibi perdeler gitarda tam çıkmaz. Aşağıda her makam gitardaki <b>en yakın</b> haliyle verildi; koma gerektirenler işaretli.</p>
+  return `<div class="intro"><p>Gitarın perdeleri oktavı 12 eşit parçaya böler (her perde ≈ 4,4 koma). TSM’de oktav 53 komadır, bu yüzden <b>segâh, eviç</b> gibi perdeler gitarda tam çıkmaz. Aşağıda her makam gitardaki <b>en yakın</b> haliyle verildi; koma gerektirenler işaretli.</p>
 <div class="row g"><button class="btn sm ghost" data-a="perdeler">Perde adları</button><button class="btn sm ghost" data-a="cesniler">Dörtlü ve beşliler</button></div></div>
 <h2 class="sec">Makamlar</h2><div class="mk-grid">${cards}</div>
-<h2 class="sec">Makam oyunları</h2><div class="lvgrid">${G.levelList(G.tracks.makam)}</div>` };
+<h2 class="sec">Makam oyunları</h2><div class="lvgrid">${G.levelList(G.tracks.makam)}</div>`;
 };
+G.screens.makam = function () { G.ui.tseg = 'makam'; return G.screens.teori(); };
 G.actions.perdeler = () => G.modal(`<h3>TSM perde adları</h3><p class="muted">Gitardaki en yakın nota. “Koma pes” işaretliler gitarda tam çıkmaz.</p><table class="t">${PERDE.map(p => `<tr><td><b>${p[0]}</b></td><td>${G.nn(p[1])}</td><td class="muted">${p[2] || ''}</td></tr>`).join('')}</table>`);
 G.actions.cesniler = () => G.modal(`<h3>Dörtlü ve beşliler (çeşniler)</h3><p class="muted">Dörtlü 22 koma (tam 4’lü), beşli 31 koma (tam 5’li). Beşli = dörtlü + tam ses (9 koma). Gitarda 1 perde ≈ 4,4 koma.</p><table class="t"><tr><th>Çeşni</th><th>Koma</th><th>Gitarda (perde)</th></tr>${Object.keys(CES).map(k => `<tr><td><b>${k}</b> ${CES[k].five ? 'beşlisi' : 'dörtlüsü'}</td><td>${CES[k].k.join(' + ')}</td><td>${CES[k].s.join(' – ')}${['Rast', 'Uşşak', 'Hüseyni'].includes(k) ? ' <span class="muted">(yaklaşık)</span>' : ''}</td></tr>`).join('')}</table><p class="muted">Hicaz’daki 12 komalık artık ikili, gitarda 3 perde (≈13 koma) olarak çalınır.</p>`);
 

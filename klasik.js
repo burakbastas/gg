@@ -415,16 +415,28 @@ const RS = ['', 'çalışıyorum', 'öğrendim'];
 const rkey = (g, i) => { const d = DG.find(x => x.g === g); return g + ':' + d.rep[i][1]; };
 function initRep() { if (S.rep && S.repV === 2) return; S.rep = {}; S.repV = 2; const set = (g, t, v) => { const d = DG.find(x => x.g === g); const i = d.rep.findIndex(r => r[1].includes(t)); if (i >= 0) S.rep[rkey(g, i)] = v; }; set(5, 'Lágrima', 2); set(6, 'Bourrée', 2); set(8, 'Capricho', 1); G.save(); }
 function gradeProg(d) { const n = d.rep.length; let v = 0; d.rep.forEach((_, i) => { v += (S.rep[rkey(d.g, i)] || 0) / 2; }); return Math.round(v / n * 100); }
-G.screens.klasik = function () {
-  initRep();
+// genel repertuvar satırı: k = durum anahtarı; md: 'pdf' (tek parça), 'pdfc' (derleme), 'ext' (dış sayfa)
+G.repRow = function (k, title, sub, url, md, src) {
+  initRep(); const v = S.rep[k] || 0; const x = (S.repd || {})[k] || {};
+  const info = [x.cur ? `${x.cur}${x.goal ? '/' + x.goal : ''} bpm` : x.goal ? `hedef ${x.goal} bpm` : '', x.recs && x.recs.length ? `kayıt ${x.recs.at(-1).d.slice(8, 10)}.${x.recs.at(-1).d.slice(5, 7)}` : ''].filter(Boolean).join(' · ');
+  const meta = esc(JSON.stringify({ t: title, s: sub, u: url, md, src: src || '' }));
+  const link = md === 'ext' ? `<a href="${esc(url)}" target="_blank" rel="noopener">` : `<a href="${esc(url)}" data-a="pdfopen" data-u="${encodeURIComponent(url)}" data-t="${encodeURIComponent(title)}" data-own="${md === 'pdf' ? 1 : 0}">`;
+  return `<div class="rep s${v}">${link}<b>${esc(title)}${md === 'ext' ? ' <span class="ext" aria-label="dış bağlantı">↗</span>' : ''}</b><span class="muted">${esc(sub)}${info ? ' · <span class="rinf">' + info + '</span>' : ''}</span></a><button class="rs rd" data-a="repdet" data-k="${esc(k)}" data-t="${esc(title)}" aria-label="${esc(title)}: tempo ve kayıt">⋯</button><button class="rs" data-a="repset" data-k="${esc(k)}" data-m="${meta}" aria-label="${esc(title)}: durum ${v ? RS[v] : 'başlamadım'}">${v ? RS[v] : 'başlamadım'}</button></div>`;
+};
+G.klasikTech = function () {
   const gdone = GD.filter(g => S.giu[g[0]]).length;
   const card = (ic, t, d, attrs) => `<button class="menu" ${attrs}><span class="pic">${ic}</span><span><b>${t}</b><span class="muted">${d}</span></span></button>`;
-  const grades = DG.map(d => `<button class="gcard" data-a="go" data-s="grade" data-p='${JSON.stringify({ g: d.g })}'><span class="gn">${d.g}</span><span><b>${d.t}</b><span class="muted">${d.top.slice(0, 3).join(' · ')}</span><span class="bar2 thin"><i style="width:${gradeProg(d)}%"></i></span></span></button>`).join('');
-  return { t: 'Klasik gitar', cat: 'klasik', h: `<h2 class="sec">Alıştırmalar</h2><div class="menus">
-${card(G.icon('arpej'), 'Giuliani 120 arpej', `PDF’indeki seviye sırasıyla ${GD.length} formül; tab, ses ve hız merdiveni. ${gdone} tamamlandı.`, 'data-a="go" data-s="giu"')}
+  return `<div class="menus">
+${card(G.icon('arpej'), 'Giuliani 120 arpej', `Op. 1, seviye sırasıyla ${GD.length} formül; tab, ses ve hız merdiveni. ${gdone} tamamlandı.`, 'data-a="go" data-s="giu"')}
 ${card(G.icon('sarki'), 'Sağ el', 'Apoyando, tel geçişi, a parmağı, tutam, tremolo, hız.', 'data-a="go" data-s="sagel"')}
 ${card(G.icon('sap'), 'Sol el', 'Kromatik permütasyonlar, bağlar, uzanma, gamlar, 3’lüler, barre, trill.', 'data-a="go" data-s="solel"')}
-</div><h2 class="sec">Delcamp seviyeleri</h2><div class="gcards">${grades}</div>
+</div>`;
+};
+G.KL = { DG, GD, GLV, initRep: () => initRep(), gradeProg: d => gradeProg(d), repUrl: r => repUrl(r), rkey: (g, i) => rkey(g, i), RS, esc };
+G.screens.delcamp = function () {
+  initRep();
+  const grades = DG.map(d => `<button class="gcard" data-a="go" data-s="grade" data-p='${JSON.stringify({ g: d.g })}'><span class="gn">${d.g}</span><span><b>${d.t}</b><span class="muted">${d.top.slice(0, 3).join(' · ')}</span><span class="bar2 thin"><i style="width:${gradeProg(d)}%"></i></span></span></button>`).join('');
+  return { t: 'Delcamp', cat: 'klasik', h: `<p class="muted">Delcamp forumunun ücretsiz seviye derlemeleri. Her seviyede teknik alıştırmalar ve bol repertuvar var; Giuliani 120 formülleri seviyelere eşleştirildi. Parçalar uygulamanın içinde açılır, durumlarını ve tempolarını burada tutarsın.</p><div class="gcards">${grades}</div>
 <p class="muted" style="margin-top:12px">Notalar: Delcamp seviye derlemeleri <a href="https://www.classical-guitar-sheet-music.com/beginner-grades-1-2-3-4/" target="_blank" rel="noopener">1–4</a>, <a href="https://www.classical-guitar-sheet-music.com/intermediate-classical-guitar-sheet-music/" target="_blank" rel="noopener">5–8</a> (ücretsiz PDF).</p>` };
 };
 G.screens.grade = function (p) {
@@ -432,8 +444,7 @@ G.screens.grade = function (p) {
   const d = DG.find(x => x.g === p.g);
   const giuL = d.giu.map(lv => { const items = GD.filter(g => g[1] === lv); const dn = items.filter(g => S.giu[g[0]]).length; return `<button class="chipb" data-a="go" data-s="giu">${GLV[lv][0]} · ${dn}/${items.length}</button>`; }).join('');
   const exs = d.ex.map(id => `<button class="menu exm" data-a="go" data-s="ex" data-p='${JSON.stringify({ id })}'><span class="lvn">${EX[id].h === 'R' ? 'Sağ' : 'Sol'}</span><span><b>${EX[id].n}</b>${S.ex[id] ? `<span class="pill ok">rekor ${S.ex[id]} bpm</span>` : ''}</span></button>`).join('');
-  const rep = d.rep.map((r, i) => { const k = rkey(d.g, i), v = S.rep[k] || 0; const U2 = repUrl(r); const x = (S.repd || {})[k] || {}; const info = [x.cur ? `${x.cur}${x.goal ? '/' + x.goal : ''} bpm` : x.goal ? `hedef ${x.goal} bpm` : '', x.recs && x.recs.length ? `kayıt ${x.recs.at(-1).d.slice(8, 10)}.${x.recs.at(-1).d.slice(5, 7)}` : ''].filter(Boolean).join(' · ');
-    return `<div class="rep s${v}"><a href="${U2.u}" data-a="pdfopen" data-u="${encodeURIComponent(U2.u)}" data-t="${encodeURIComponent(r[1])}" data-own="${U2.own ? 1 : 0}"><b>${r[1]}</b><span class="muted">${r[0]}${info ? ' · <span class="rinf">' + info + '</span>' : ''}</span></a><button class="rs rd" data-a="repdet" data-k="${esc(k)}" data-t="${esc(r[1])}" aria-label="${esc(r[1])}: tempo ve kayıt">⋯</button><button class="rs" data-a="repset" data-k="${k}">${v ? RS[v] : 'başlamadım'}</button></div>`; }).join('');
+  const rep = d.rep.map((r, i) => { const U2 = repUrl(r); return G.repRow(rkey(d.g, i), r[1], r[0], U2.u, U2.own ? 'pdf' : 'pdfc', 'Delcamp ' + d.g + '. seviye'); }).join('');
   // bu seviyenin Giuliani formüllerinden sıradaki 4 tanesi
   const nextG = GD.filter(g => d.giu.includes(g[1]) && !S.giu[g[0]]).slice(0, 4);
   const giuNext = d.giu.length ? (nextG.length ? `<div class="muted" style="margin-top:8px">Sıradaki Giuliani formülleri:</div><div class="chips">${nextG.map(g => `<button class="chipb" data-a="go" data-s="giud" data-p='${JSON.stringify({ no: g[0] })}'>No. ${g[0]}</button>`).join('')}</div>` : '<p class="muted">Bu seviyenin Giuliani formüllerini bitirdin.</p>') : '';
@@ -494,5 +505,5 @@ G.actions.recgo = async d => {
   mr.start(); b.textContent = '■ Kaydı bitir';
   REC.iv = setInterval(() => { const s = Math.floor((Date.now() - t0) / 1000); const e = $('#recs'); if (e) e.textContent = `kaydediliyor ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; if (s > 900) recStop(); }, 500);
 };
-G.actions.repset = d => { S.rep[d.k] = ((S.rep[d.k] || 0) + 1) % 3; G.save(); G.rerender(); };
+G.actions.repset = d => { S.rep[d.k] = ((S.rep[d.k] || 0) + 1) % 3; if (d.m) { try { S.repm = S.repm || {}; S.repm[d.k] = JSON.parse(d.m); } catch (e) {} } G.save(); G.rerender(); };
 })();
