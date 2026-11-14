@@ -458,15 +458,18 @@ const NOFRAME = /(^|\.)thisisclassicalguitar\.com$/;
 const pdfForced = u => { try { return NOFRAME.test(new URL(u).hostname); } catch (e) { return false; } };
 const pdfMode = u => pdfForced(u) ? 'g' : G.ui.pdfm || (window.matchMedia && matchMedia('(pointer: coarse)').matches ? 'g' : 'd');
 const pdfSrc = (u, m) => m === 'g' ? 'https://docs.google.com/viewer?embedded=true&url=' + encodeURIComponent(u.split('#')[0]) : u;
-G.pdfFrame = (u, t) => { const m = pdfMode(u); return `<div class="pdfbar">${pdfForced(u) ? '<span></span>' : `<div class="seg sm"><button class="btn sm ${m === 'd' ? 'on' : 'ghost'}" data-a="pdfm" data-v="d">Doğrudan</button><button class="btn sm ${m === 'g' ? 'on' : 'ghost'}" data-a="pdfm" data-v="g">Google görüntüleyici</button></div>`}<button class="btn sm ghost" data-a="pdfre">Yeniden yükle</button></div>
-<div class="pdfv"><iframe src="${esc(pdfSrc(u, m))}" title="${esc(t)}" loading="lazy" allowfullscreen></iframe></div>
+// Google görüntüleyici ara sıra boş yanıt döner (çerçeve hiç yüklenmez); yüklenmezse birkaç kez kendiliğinden yeniden dener
+let PDFN = 0;
+G.pdfCheck = (id, n) => { const f = document.getElementById(id); if (!f || f.dataset.ok || n >= 3) return; const c = f.cloneNode(); f.replaceWith(c); setTimeout(() => G.pdfCheck(id, n + 1), 7000); };
+G.pdfFrame = (u, t) => { const m = pdfMode(u), id = 'pdff' + (++PDFN); if (m === 'g') setTimeout(() => G.pdfCheck(id, 0), 7000); return `<div class="pdfbar">${pdfForced(u) ? '<span></span>' : `<div class="seg sm"><button class="btn sm ${m === 'd' ? 'on' : 'ghost'}" data-a="pdfm" data-v="d">Doğrudan</button><button class="btn sm ${m === 'g' ? 'on' : 'ghost'}" data-a="pdfm" data-v="g">Google görüntüleyici</button></div>`}<button class="btn sm ghost" data-a="pdfre">Yeniden yükle</button></div>
+<div class="pdfv"><iframe id="${id}" src="${esc(pdfSrc(u, m))}" title="${esc(t)}" onload="this.dataset.ok=1" allowfullscreen></iframe></div>
 <p class="muted">${pdfForced(u) ? 'Sayfa boş kalırsa “Yeniden yükle”ye dokun; görüntüleyici bazen ilk denemede açılmaz.' : 'Sayfa boş kalırsa “Yeniden yükle”ye dokun ya da diğer görüntüleyiciyi dene. Telefonda Google görüntüleyici daha güvenilir çalışır.'}</p>`; };
 G.screens.pdf = function (p) {
   return { t: p.t, cat: 'klasik', h: `<div data-keep="1">${p.own ? '' : '<p class="muted">Bu parça seviye derlemesinin içinde; görüntüleyicinin arama özelliğiyle (Ctrl+F) parça adını bul.</p>'}${G.pdfFrame(p.u, p.t)}</div>` };
 };
 G.actions.pdfm = d => { G.ui.pdfm = d.v; G.rerender(); };
 // src değiştirmek tarayıcı geçmişine kayıt ekler (geri tuşu çerçevede kalır); bu yüzden çerçeve yenisiyle değiştirilir
-G.actions.pdfre = () => { const f = document.querySelector('.pdfv iframe'); if (!f) return; const n = f.cloneNode(); f.replaceWith(n); };
+G.actions.pdfre = () => { const f = document.querySelector('.pdfv iframe'); if (!f) return; const n = f.cloneNode(); delete n.dataset.ok; f.replaceWith(n); };
 // ---------- repertuvar ayrıntısı: tempo hedefi ve kendini kaydetme ----------
 let REC = null;
 G._recStop = () => recStop();
