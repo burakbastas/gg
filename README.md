@@ -8,10 +8,10 @@ Alt menüde 5 sekme var; her sekmenin içinde üstte alt sekmeler.
 
 - **Bugün:** 60 dakikalık günlük plan (gitarsız 25 + gitarla 35 dk) ve 10 dakikalık kısa gün, kaldığın yerden devam, seri, son 7 gün, seviye ilerlemesi. Ayarlar sağ üstteki düğmede.
 - **Klasik**
-  - *Metotlar:* Delcamp (1–8. seviye, teknik ve repertuvar), This is Classical Guitar (Bradford Werner, 1–10. seviye parça listesi ve kitaplar), Cornerstone (Simon Powis, ücretli; ücretsiz kısımları ve uygulamadaki karşılıkları), The Guitar School (Sveinn Eythorsson, 0–8. seviye), telifsiz klasik metotlar (Carulli, Carcassi, Sor, Aguado, Giuliani; IMSLP). Her metodun kartında seviye aralığı, ücret ve odak yan yana.
+  - *Metotlar:* yalnızca ücretsiz olanlar. Delcamp (1–8. seviye, teknik ve repertuvar); This is Classical Guitar (Bradford Werner: metodun iki cildine eşlik eden 67 video ders ve 1–9. seviyede videolu, notalı 33 parça; her seviye teknikte Delcamp alıştırmalarıyla eşleşik); telifsiz klasik metotlar (Carulli, Carcassi, Sor, Aguado, Giuliani; IMSLP baskıları). Notalar ve videolar uygulamanın içinde açılır.
   - *Teknik:* Giuliani 120 arpej, sağ el ve sol el alıştırmaları.
   - *Repertuvarım:* tüm metotlardan çalıştığın ve öğrendiğin parçalar; tempo hedefi ve kendini kaydetme.
-- **Pop:** 1 yıllık eşlik yolu ve JustinGuitar kursu (1–7. seviye, uygulamadaki alıştırmalarla eşleşik); akor geçişleri, arpej atölyesi, barre ve tonlar; şarkılarım ve kulaktan çıkarma asistanı; akor kütüphanesi.
+- **Pop:** 1 yıllık eşlik yolu ve JustinGuitar kursu (1–7. seviye, 405 video ders modül modül, uygulamanın içinde oynar; her seviye uygulamadaki alıştırmalarla eşleşik); akor geçişleri, arpej atölyesi, barre ve tonlar; şarkılarım ve kulaktan çıkarma asistanı; akor kütüphanesi.
 - **Teori:** Armoni (konu anlatımlı seviyeler), Kulak, Klavye (sap ezberi, ısı haritası, akor şekli oyunları, Barre Bulucu), Makam (9 makam ve makam oyunları).
 - **Araçlar:** akort aleti ve metronom (aksak usuller, tempo antrenörü).
 
@@ -43,4 +43,4 @@ Güncellemede dosyaları yeniden yüklemen yeterli. Eski sürümden gelen ilerle
 - Naylon gitar örnek sesleri: quartertone, Freesound paket 11573, [tonejs-instruments](https://github.com/nbrosowsky/tonejs-instruments) derlemesi üzerinden, [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). Ayrıntı: `snd/KAYNAK.txt`.
 - Yazı tipi: IBM Plex Sans ve IBM Plex Mono (IBM), SIL Open Font License 1.1 (`fonts/IBM-Plex-OFL.txt`).
 - Simgelerin çoğu [Lucide](https://lucide.dev) (ISC lisansı).
-- Delcamp, This is Classical Guitar, The Guitar School, Cornerstone, IMSLP ve JustinGuitar içerikleri uygulamaya kopyalanmadı; kendi sayfalarına bağlantı verilir.
+- Delcamp, This is Classical Guitar, IMSLP ve JustinGuitar içerikleri uygulamaya kopyalanmadı: notalar kaynak sitelerinden Google görüntüleyicisiyle ya da doğrudan, videolar YouTube oynatıcısıyla (youtube-nocookie.com) uygulamanın içine gömülerek açılır. İzlenen dersler, parça durumu, tempo ve kayıtlar yalnızca cihazda tutulur.

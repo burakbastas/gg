@@ -25,7 +25,7 @@ G.screens.pop = function () {
     const yd = Object.values(S.yol || {}).filter(Boolean).length;
     h = `<p class="muted">Hedef: bir şarkıyı kulaktan dinleyip kendi başına eşlik etmek.</p><div class="menus">
 ${card('yol', '1 yıllık eşlik yolu', `12 ay, 48 hedef: el, kulak ve teori adım adım. ${yd}/48 hedef tamamlandı.`, 'data-a="go" data-s="yol"', 'hl')}
-${card('sekil', 'JustinGuitar kursu', 'Ücretsiz video kurs: 1–3. seviye başlangıç, 4–7. seviye orta. Her seviyenin uygulamadaki karşılık alıştırmaları ile.', 'data-a="go" data-s="jg"')}
+${card('sekil', 'JustinGuitar kursu', '405 video ders uygulamanın içinde: 1–3. seviye başlangıç, 4–7. seviye orta. Her seviye uygulamadaki alıştırmalarla eşleşik.', 'data-a="go" data-s="jg"')}
 </div>`;
   } else if (sg === 'calis') {
     h = `<p class="muted">Gitar elindeyken. Hepsinde metronom, sayarak başlama ve hız merdiveni var.</p><div class="menus">

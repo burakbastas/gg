@@ -1,8 +1,9 @@
 (function () {
 'use strict';
 const G = window.G = { screens: {}, actions: {}, tracks: {}, ui: { tseg: 'armoni' } };
-G.VERSION = 19;
+G.VERSION = 20;
 G.CHANGES = [
+  [20, '14 Kasım 2026', 'Klasikte yalnızca ücretsiz metotlar kaldı: Delcamp, This is Classical Guitar ve telifsiz klasik metotlar. This is Classical Guitar’ın 67 metot videosu ve videolu, notalı 33 parçası, telifsiz metotların notaları ve JustinGuitar’ın 7 seviyedeki 405 dersi artık uygulamanın içinde açılıyor; dışarıya giden bağlantı yok. Videolarda izlendi işareti, önceki ve sonraki ders, kaldığın yerden devam; parçalarda video ve nota yan yana, durum, tempo ve kayıt; her seviyeye teknikte karşılık gelen Delcamp alıştırmaları.'],
   [19, '14 Kasım 2026', 'Yeni düzen: 5 sekme (Bugün, Klasik, Pop, Teori, Araçlar), her bölümde alt sekmeler. Klasikte metot seçimi: Delcamp, This is Classical Guitar, Cornerstone, The Guitar School ve telifsiz klasik metotlar; Teknik ve Repertuvarım ayrı. Pop’a JustinGuitar kursu. Teori altında Armoni, Kulak, Klavye ve Makam. Yeni Stüdyo teması (koyu ve açık), IBM Plex yazı tipi ve trill işaretli yeni simge.'],
   [18, '10 Kasım 2026', 'Uygulama simgesi yüklemede de yeni logoyu gösteriyor; güncellemeler önbellekte takılmıyor.'],
   [17, '10 Kasım 2026', 'Logo ve uygulama simgesi: turkuaz zemin üzerinde dalgalı telli pembe pena.'],
@@ -152,13 +153,15 @@ G.go = function (name, p, push) {
   render(name, p); window.scrollTo(0, 0);
 };
 G.rerender = () => { const t = stack[stack.length - 1]; const y = window.scrollY; render(t.name, t.p); window.scrollTo(0, y); };
+// video ya da nota açık ekranlar (data-keep) yeniden çizilmez; oynatma ve sayfa yeri korunur
+G.softRerender = () => { if (!document.querySelector('#app [data-keep]')) G.rerender(); };
 G.replace = (name, p) => { stack[stack.length - 1] = { name, p }; hRepl(); render(name, p); window.scrollTo(0, 0); };
 const TABALIAS = { sap: ['teori', 'klavye'], makam: ['teori', 'makam'], kulak: ['teori', 'kulak'], akor: ['pop', 'calis'] };
 const NAVROOT = { home: 'home', ayar: 'ayar', klasik: 'klasik', pop: 'pop', teori: 'teori', arac: 'arac', sap: 'teori', makam: 'teori', akor: 'pop' };
 G.goTab = (tab, sub, p) => { const al = TABALIAS[tab]; if (al) { tab = al[0]; if (al[0] === 'teori') G.ui.tseg = al[1]; else G.ui.pseg = al[1]; }
   stack = [{ name: tab, p: {} }]; if (sub) { hPush(); G.go(sub, p || {}); } else { hPush(); render(tab, {}); window.scrollTo(0, 0); } };
 G.modal = html => { const m = $('#modal'); m.innerHTML = `<div class="box" role="dialog" aria-modal="true">${html}<button class="btn ghost full" style="margin-top:14px" data-a="mclose">Kapat</button></div>`; m.hidden = false; };
-G.actions.mclose = () => { if (G._recStop) G._recStop(); $('#modal').hidden = true; $('#modal').innerHTML = ''; if (G._modalDirty) { G._modalDirty = false; G.rerender(); } };
+G.actions.mclose = () => { if (G._recStop) G._recStop(); $('#modal').hidden = true; $('#modal').innerHTML = ''; if (G._modalDirty) { G._modalDirty = false; G.softRerender(); } };
 G.actions.tab = d => { if (stack.length === 1 && stack[0].name === d.t && !SES) { window.scrollTo({ top: 0, behavior: 'smooth' }); return; } G.goTab(d.t); };
 G.actions.back = () => { if (stack.length > 1 || SES) history.back(); };
 G.actions.go = d => G.go(d.s, d.p ? JSON.parse(d.p) : {});

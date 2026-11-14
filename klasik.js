@@ -415,13 +415,13 @@ const RS = ['', 'çalışıyorum', 'öğrendim'];
 const rkey = (g, i) => { const d = DG.find(x => x.g === g); return g + ':' + d.rep[i][1]; };
 function initRep() { if (S.rep && S.repV === 2) return; S.rep = {}; S.repV = 2; const set = (g, t, v) => { const d = DG.find(x => x.g === g); const i = d.rep.findIndex(r => r[1].includes(t)); if (i >= 0) S.rep[rkey(g, i)] = v; }; set(5, 'Lágrima', 2); set(6, 'Bourrée', 2); set(8, 'Capricho', 1); G.save(); }
 function gradeProg(d) { const n = d.rep.length; let v = 0; d.rep.forEach((_, i) => { v += (S.rep[rkey(d.g, i)] || 0) / 2; }); return Math.round(v / n * 100); }
-// genel repertuvar satırı: k = durum anahtarı; md: 'pdf' (tek parça), 'pdfc' (derleme), 'ext' (dış sayfa)
+// genel repertuvar satırı: k = durum anahtarı; md: 'pdf' (tek parça), 'pdfc' (derleme), 'les' (video ve notalı ders ekranı)
 G.repRow = function (k, title, sub, url, md, src) {
   initRep(); const v = S.rep[k] || 0; const x = (S.repd || {})[k] || {};
   const info = [x.cur ? `${x.cur}${x.goal ? '/' + x.goal : ''} bpm` : x.goal ? `hedef ${x.goal} bpm` : '', x.recs && x.recs.length ? `kayıt ${x.recs.at(-1).d.slice(8, 10)}.${x.recs.at(-1).d.slice(5, 7)}` : ''].filter(Boolean).join(' · ');
   const meta = esc(JSON.stringify({ t: title, s: sub, u: url, md, src: src || '' }));
-  const link = md === 'ext' ? `<a href="${esc(url)}" target="_blank" rel="noopener">` : `<a href="${esc(url)}" data-a="pdfopen" data-u="${encodeURIComponent(url)}" data-t="${encodeURIComponent(title)}" data-own="${md === 'pdf' ? 1 : 0}">`;
-  return `<div class="rep s${v}">${link}<b>${esc(title)}${md === 'ext' ? ' <span class="ext" aria-label="dış bağlantı">↗</span>' : ''}</b><span class="muted">${esc(sub)}${info ? ' · <span class="rinf">' + info + '</span>' : ''}</span></a><button class="rs rd" data-a="repdet" data-k="${esc(k)}" data-t="${esc(title)}" aria-label="${esc(title)}: tempo ve kayıt">⋯</button><button class="rs" data-a="repset" data-k="${esc(k)}" data-m="${meta}" aria-label="${esc(title)}: durum ${v ? RS[v] : 'başlamadım'}">${v ? RS[v] : 'başlamadım'}</button></div>`;
+  const link = md === 'les' ? `<a href="#" data-a="lesopen" data-k="${esc(k)}">` : `<a href="#" data-a="pdfopen" data-u="${encodeURIComponent(url)}" data-t="${encodeURIComponent(title)}" data-own="${md === 'pdfc' ? 0 : 1}">`;
+  return `<div class="rep s${v}">${link}<b>${esc(title)}</b><span class="muted">${esc(sub)}${info ? ' · <span class="rinf">' + info + '</span>' : ''}</span></a><button class="rs rd" data-a="repdet" data-k="${esc(k)}" data-t="${esc(title)}" aria-label="${esc(title)}: tempo ve kayıt">⋯</button><button class="rs" data-a="repset" data-k="${esc(k)}" data-m="${meta}" aria-label="${esc(title)}: durum ${v ? RS[v] : 'başlamadım'}">${v ? RS[v] : 'başlamadım'}</button></div>`;
 };
 G.klasikTech = function () {
   const gdone = GD.filter(g => S.giu[g[0]]).length;
@@ -437,7 +437,7 @@ G.screens.delcamp = function () {
   initRep();
   const grades = DG.map(d => `<button class="gcard" data-a="go" data-s="grade" data-p='${JSON.stringify({ g: d.g })}'><span class="gn">${d.g}</span><span><b>${d.t}</b><span class="muted">${d.top.slice(0, 3).join(' · ')}</span><span class="bar2 thin"><i style="width:${gradeProg(d)}%"></i></span></span></button>`).join('');
   return { t: 'Delcamp', cat: 'klasik', h: `<p class="muted">Delcamp forumunun ücretsiz seviye derlemeleri. Her seviyede teknik alıştırmalar ve bol repertuvar var; Giuliani 120 formülleri seviyelere eşleştirildi. Parçalar uygulamanın içinde açılır, durumlarını ve tempolarını burada tutarsın.</p><div class="gcards">${grades}</div>
-<p class="muted" style="margin-top:12px">Notalar: Delcamp seviye derlemeleri <a href="https://www.classical-guitar-sheet-music.com/beginner-grades-1-2-3-4/" target="_blank" rel="noopener">1–4</a>, <a href="https://www.classical-guitar-sheet-music.com/intermediate-classical-guitar-sheet-music/" target="_blank" rel="noopener">5–8</a> (ücretsiz PDF).</p>` };
+<p class="muted" style="margin-top:12px">Kaynak: Delcamp seviye derlemeleri, classical-guitar-sheet-music.com (ücretsiz PDF).</p>` };
 };
 G.screens.grade = function (p) {
   initRep();
@@ -453,17 +453,20 @@ G.screens.grade = function (p) {
 <h2 class="sec">Repertuvar</h2><p class="muted">Parça adına dokun: notası uygulamanın içinde açılır. Sağdaki düğme durumunu değiştirir (başlamadım → çalışıyorum → öğrendim).</p><div class="reps">${rep}</div>` };
 };
 G.actions.pdfopen = (d, el, e) => { if (e) e.preventDefault(); G.go('pdf', { u: decodeURIComponent(d.u), t: decodeURIComponent(d.t), own: d.own === '1' }); };
+// nota görüntüleyici. Çerçeveye girmeyi yasaklayan siteler (X-Frame-Options) yalnızca Google görüntüleyicisiyle açılır.
+const NOFRAME = /(^|\.)thisisclassicalguitar\.com$/;
+const pdfForced = u => { try { return NOFRAME.test(new URL(u).hostname); } catch (e) { return false; } };
+const pdfMode = u => pdfForced(u) ? 'g' : G.ui.pdfm || (window.matchMedia && matchMedia('(pointer: coarse)').matches ? 'g' : 'd');
+const pdfSrc = (u, m) => m === 'g' ? 'https://docs.google.com/viewer?embedded=true&url=' + encodeURIComponent(u.split('#')[0]) : u;
+G.pdfFrame = (u, t) => { const m = pdfMode(u); return `<div class="pdfbar">${pdfForced(u) ? '<span></span>' : `<div class="seg sm"><button class="btn sm ${m === 'd' ? 'on' : 'ghost'}" data-a="pdfm" data-v="d">Doğrudan</button><button class="btn sm ${m === 'g' ? 'on' : 'ghost'}" data-a="pdfm" data-v="g">Google görüntüleyici</button></div>`}<button class="btn sm ghost" data-a="pdfre">Yeniden yükle</button></div>
+<div class="pdfv"><iframe src="${esc(pdfSrc(u, m))}" title="${esc(t)}" loading="lazy" allowfullscreen></iframe></div>
+<p class="muted">${pdfForced(u) ? 'Sayfa boş kalırsa “Yeniden yükle”ye dokun; görüntüleyici bazen ilk denemede açılmaz.' : 'Sayfa boş kalırsa “Yeniden yükle”ye dokun ya da diğer görüntüleyiciyi dene. Telefonda Google görüntüleyici daha güvenilir çalışır.'}</p>`; };
 G.screens.pdf = function (p) {
-  const mobile = window.matchMedia && matchMedia('(pointer: coarse)').matches;
-  const mode = G.ui.pdfm || (mobile ? 'g' : 'd');
-  const bare = p.u.split('#')[0];
-  const src = mode === 'g' ? 'https://docs.google.com/viewer?embedded=true&url=' + encodeURIComponent(bare) : p.u;
-  return { t: p.t, cat: 'klasik', h: `<div class="pdfbar"><div class="seg sm"><button class="btn sm ${mode === 'd' ? 'on' : 'ghost'}" data-a="pdfm" data-v="d">Doğrudan</button><button class="btn sm ${mode === 'g' ? 'on' : 'ghost'}" data-a="pdfm" data-v="g">Google görüntüleyici</button></div><a class="btn sm ghost" href="${p.u}" target="_blank" rel="noopener">Yeni sekmede ↗</a></div>
-${p.own ? '' : '<p class="muted">Bu parça seviye derlemesinin içinde; görüntüleyicinin arama özelliğiyle (Ctrl+F) parça adını bul.</p>'}
-<div class="pdfv"><iframe src="${src}" title="${p.t}" loading="lazy" allowfullscreen></iframe></div>
-<p class="muted">Sayfa boş kalırsa diğer görüntüleyiciyi dene. Telefonda Google görüntüleyici daha güvenilir çalışır.</p>` };
+  return { t: p.t, cat: 'klasik', h: `<div data-keep="1">${p.own ? '' : '<p class="muted">Bu parça seviye derlemesinin içinde; görüntüleyicinin arama özelliğiyle (Ctrl+F) parça adını bul.</p>'}${G.pdfFrame(p.u, p.t)}</div>` };
 };
 G.actions.pdfm = d => { G.ui.pdfm = d.v; G.rerender(); };
+// src değiştirmek tarayıcı geçmişine kayıt ekler (geri tuşu çerçevede kalır); bu yüzden çerçeve yenisiyle değiştirilir
+G.actions.pdfre = () => { const f = document.querySelector('.pdfv iframe'); if (!f) return; const n = f.cloneNode(); f.replaceWith(n); };
 // ---------- repertuvar ayrıntısı: tempo hedefi ve kendini kaydetme ----------
 let REC = null;
 G._recStop = () => recStop();
@@ -487,7 +490,7 @@ G.actions.repdet = d => {
 <h3 style="margin-top:16px">Kendini kaydet</h3><p class="muted">Kayıtlar yalnızca bu cihazda saklanır; son 5 kayıt tutulur.</p><div class="row g"><button class="btn sm" id="recb" data-a="recgo" data-k="${esc(k)}">● Kaydı başlat</button><span class="muted" id="recs"></span></div><div id="recl"></div>`);
   recList(k);
 };
-G.actions.repsave = d => { const x = repD(d.k); x.cur = Math.max(0, +$('#rcur').value || 0); x.goal = Math.max(0, +$('#rgoal').value || 0); G.save(); G.actions.mclose(); G.rerender(); };
+G.actions.repsave = d => { const x = repD(d.k); x.cur = Math.max(0, +$('#rcur').value || 0); x.goal = Math.max(0, +$('#rgoal').value || 0); G.save(); G.actions.mclose(); G.softRerender(); };
 G.actions.recgo = async d => {
   const k = d.k, b = $('#recb'), st = $('#recs');
   if (REC && REC.mr && REC.mr.state === 'recording') { recStop(); return; }
@@ -505,5 +508,10 @@ G.actions.recgo = async d => {
   mr.start(); b.textContent = '■ Kaydı bitir';
   REC.iv = setInterval(() => { const s = Math.floor((Date.now() - t0) / 1000); const e = $('#recs'); if (e) e.textContent = `kaydediliyor ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; if (s > 900) recStop(); }, 500);
 };
-G.actions.repset = d => { S.rep[d.k] = ((S.rep[d.k] || 0) + 1) % 3; if (d.m) { try { S.repm = S.repm || {}; S.repm[d.k] = JSON.parse(d.m); } catch (e) {} } G.save(); G.rerender(); };
+G.actions.repset = (d, el) => {
+  const v = S.rep[d.k] = ((S.rep[d.k] || 0) + 1) % 3; if (d.m) { try { S.repm = S.repm || {}; S.repm[d.k] = JSON.parse(d.m); } catch (e) {} } G.save();
+  // ip: video ya da nota açıkken ekranı yeniden çizmeden yalnızca düğmeyi güncelle
+  if (d.ip && el) { el.className = el.className.replace(/\bs\d\b/, 's' + v); el.textContent = v ? RS[v] : 'başlamadım'; return; }
+  G.rerender();
+};
 })();
